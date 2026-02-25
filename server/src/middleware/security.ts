@@ -6,16 +6,17 @@ export const securityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'", "https://api.openai.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Adicionado unsafe-eval para alguns pacotes frontend
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https://*"], // Permitir imagens de qualquer HTTPS (para avatares, etc)
+      connectSrc: ["'self'", "https://api.openai.com", "https://*.railway.app"],
       mediaSrc: ["'self'", "blob:"],
-      fontSrc: ["'self'"],
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
     },
   },
+  crossOriginEmbedderPolicy: false, // Desabilitado para evitar bloqueio de assets externos
   hsts: {
     maxAge: 31536000,
     includeSubDomains: true,
@@ -26,7 +27,7 @@ export const securityHeaders = helmet({
 
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 200,
+  max: 1000, // Aumentado para evitar falsos positivos
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -36,7 +37,7 @@ export const generalLimiter = rateLimit({
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 30, // Aumentado de 5 para 30
   standardHeaders: true,
   legacyHeaders: false,
   message: {

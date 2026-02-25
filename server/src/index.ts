@@ -66,10 +66,21 @@ app.use(
 
 // ─── Servir frontend em produção ───────────────────────────────────────
 if (env.NODE_ENV === "production") {
+  // No Docker: __dirname = /app/server/dist -> clientDist = /app/client/dist
   const clientDist = path.resolve(__dirname, "../../client/dist");
+  console.log(`📁 Serving static files from: ${clientDist}`);
+
   app.use(express.static(clientDist));
-  app.get("*", (_req, res) => {
-    res.sendFile(path.join(clientDist, "index.html"));
+
+  // SPA fallback — todas as rotas que NÃO são /api vão pro index.html
+  app.get(/^(?!\/api).*/, (_req, res) => {
+    const indexPath = path.join(clientDist, "index.html");
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error("❌ Erro ao servir index.html:", err);
+        res.status(500).send("Erro interno do servidor");
+      }
+    });
   });
 }
 
