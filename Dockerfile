@@ -20,16 +20,16 @@ COPY server/package.json server/package-lock.json* ./
 RUN npm install
 COPY server/ .
 COPY shared/ ../shared/
-RUN npx tsc
+RUN npm run build
 
 # ─── Production ──────────────────────────────────────────────────────────
 FROM base AS production
 WORKDIR /app
 
-# Copy server build + production deps
+# Copy server build results
 COPY --from=server-build /app/server/dist ./server/dist
-COPY --from=server-build /app/server/node_modules ./server/node_modules
 COPY --from=server-build /app/server/package.json ./server/package.json
+COPY --from=server-build /app/server/node_modules ./server/node_modules
 
 # Copy client static build
 COPY --from=client-build /app/client/dist ./client/dist
@@ -39,5 +39,7 @@ ENV PORT=3000
 
 EXPOSE 3000
 
+# Railway starts in /app/server usually if we set it as WORKDIR
+# or we can specify the path relative to /app
 WORKDIR /app/server
 CMD ["node", "dist/index.js"]
