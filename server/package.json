@@ -1,0 +1,40 @@
+{
+  "name": "psicoia-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc && tsc-alias",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@trpc/server": "^11.0.0",
+    "@aws-sdk/client-s3": "^3.750.0",
+    "@aws-sdk/s3-request-presigner": "^3.750.0",
+    "better-auth": "^1.2.0",
+    "cors": "^2.8.5",
+    "drizzle-orm": "^0.39.3",
+    "express": "^5.0.1",
+    "helmet": "^8.0.0",
+    "openai": "^4.85.0",
+    "pg": "^8.13.3",
+    "express-rate-limit": "^7.5.0",
+    "zod": "^3.24.2",
+    "argon2": "^0.41.1",
+    "dotenv": "^16.4.7",
+    "nanoid": "^5.1.2",
+    "mime-types": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/pg": "^8.11.11",
+    "@types/mime-types": "^2.1.4",
+    "@types/node": "^22.13.5",
+    "drizzle-kit": "^0.30.5",
+    "tsc-alias": "^1.8.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}
