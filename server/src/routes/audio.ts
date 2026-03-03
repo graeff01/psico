@@ -20,7 +20,7 @@ export const audioRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       // Verificar propriedade da consulta
       const [consultation] = await db
@@ -95,7 +95,7 @@ export const audioRouter = router({
   getPlaybackUrl: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       const [recording] = await db
         .select()
@@ -119,7 +119,7 @@ export const audioRouter = router({
   listByConsultation: protectedProcedure
     .input(z.object({ consultationId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       const recordings = await db
         .select()
@@ -146,7 +146,7 @@ export const audioRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       const [recording] = await db
         .select()

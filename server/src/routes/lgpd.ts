@@ -18,7 +18,7 @@ import { logAudit, getClientIP } from "../utils/audit.js";
 export const lgpdRouter = router({
   // ─── Portabilidade: exportar todos os dados ──────────────────────────
   exportData: protectedProcedure.mutation(async ({ ctx }) => {
-    const userId = Number(ctx.user.id);
+    const userId = ctx.user.id;
 
     // Buscar todos os pacientes com dados decriptados
     const allPatients = await db
@@ -76,7 +76,6 @@ export const lgpdRouter = router({
       userId,
       action: "LGPD_DATA_EXPORT",
       resourceType: "user",
-      resourceId: userId,
       ipAddress: getClientIP(ctx.req),
       details: "Exportação de dados LGPD solicitada",
     });
@@ -88,7 +87,7 @@ export const lgpdRouter = router({
   deletePatientData: protectedProcedure
     .input(z.object({ patientId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       // Verificar propriedade
       const [patient] = await db
@@ -123,7 +122,7 @@ export const lgpdRouter = router({
   getConsentStatus: protectedProcedure
     .input(z.object({ patientId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       const consents = await db
         .select()
@@ -154,7 +153,7 @@ export const lgpdRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       const [consent] = await db
         .insert(lgpdConsents)
@@ -185,7 +184,7 @@ export const lgpdRouter = router({
   revokeConsent: protectedProcedure
     .input(z.object({ consentId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       const [updated] = await db
         .update(lgpdConsents)
@@ -224,7 +223,7 @@ export const lgpdRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
       const offset = (input.page - 1) * input.limit;
 
       const conditions = [eq(auditLogs.userId, userId)];

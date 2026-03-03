@@ -25,7 +25,7 @@ export const aiRouter = router({
   transcribe: protectedProcedure
     .input(z.object({ audioRecordingId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       // Buscar áudio
       const [audio] = await db
@@ -109,7 +109,7 @@ export const aiRouter = router({
   analyze: protectedProcedure
     .input(z.object({ consultationId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       // Verificar propriedade
       const [consultation] = await db
@@ -188,7 +188,7 @@ export const aiRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
       const sessionId = input.sessionId || nanoid();
 
       // Montar contexto
@@ -347,7 +347,7 @@ export const aiRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       const conditions = [eq(aiChatMessages.userId, userId)];
       if (input.sessionId)
@@ -376,7 +376,7 @@ export const aiRouter = router({
   clearChatHistory: protectedProcedure
     .input(z.object({ sessionId: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       const conditions = [eq(aiChatMessages.userId, userId)];
       if (input.sessionId)

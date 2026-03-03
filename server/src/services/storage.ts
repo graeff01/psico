@@ -34,7 +34,7 @@ function getS3(): S3Client {
 
 export async function uploadAudio(
   buffer: Buffer,
-  userId: number,
+  userId: string,
   consultationId: number,
   mimeType: string = "audio/webm"
 ): Promise<{ s3Key: string; size: number }> {
@@ -93,7 +93,7 @@ export async function deleteAudio(s3Key: string): Promise<void> {
 
 export async function uploadBackup(
   buffer: Buffer,
-  userId: number,
+  userId: string,
   fileName: string
 ): Promise<{ s3Key: string; size: number }> {
   const s3Key = `backups/${userId}/${fileName}`;

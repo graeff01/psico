@@ -3,7 +3,7 @@ import { auditLogs } from "../db/schema.js";
 import { encrypt } from "./encryption.js";
 
 interface AuditEntry {
-  userId?: number;
+  userId?: string;
   action: string;
   resourceType?: string;
   resourceId?: number;

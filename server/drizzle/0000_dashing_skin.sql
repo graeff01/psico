@@ -1,6 +1,6 @@
 CREATE TABLE "accounts" (
 	"id" text PRIMARY KEY NOT NULL,
-	"user_id" integer NOT NULL,
+	"user_id" text NOT NULL,
 	"account_id" text NOT NULL,
 	"provider_id" text NOT NULL,
 	"access_token" text,
@@ -17,7 +17,7 @@ CREATE TABLE "accounts" (
 CREATE TABLE "ai_analyses" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"consultation_id" integer NOT NULL,
-	"user_id" integer NOT NULL,
+	"user_id" text NOT NULL,
 	"type" varchar(30) NOT NULL,
 	"content" text NOT NULL,
 	"tags" jsonb DEFAULT '[]'::jsonb,
@@ -28,7 +28,7 @@ CREATE TABLE "ai_analyses" (
 --> statement-breakpoint
 CREATE TABLE "ai_chat_messages" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"user_id" integer NOT NULL,
+	"user_id" text NOT NULL,
 	"patient_id" integer,
 	"session_id" varchar(100) NOT NULL,
 	"role" varchar(20) NOT NULL,
@@ -41,7 +41,7 @@ CREATE TABLE "ai_chat_messages" (
 CREATE TABLE "audio_recordings" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"consultation_id" integer NOT NULL,
-	"user_id" integer NOT NULL,
+	"user_id" text NOT NULL,
 	"s3_key" text NOT NULL,
 	"file_name" varchar(255),
 	"mime_type" varchar(100) DEFAULT 'audio/webm',
@@ -53,7 +53,7 @@ CREATE TABLE "audio_recordings" (
 --> statement-breakpoint
 CREATE TABLE "audit_logs" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"user_id" integer,
+	"user_id" text,
 	"action" varchar(100) NOT NULL,
 	"resource_type" varchar(50),
 	"resource_id" integer,
@@ -67,7 +67,7 @@ CREATE TABLE "audit_logs" (
 --> statement-breakpoint
 CREATE TABLE "backups" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"user_id" integer NOT NULL,
+	"user_id" text NOT NULL,
 	"s3_key" text NOT NULL,
 	"file_name" varchar(255),
 	"file_size" integer,
@@ -80,7 +80,7 @@ CREATE TABLE "backups" (
 CREATE TABLE "consultations" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"patient_id" integer NOT NULL,
-	"user_id" integer NOT NULL,
+	"user_id" text NOT NULL,
 	"date" timestamp NOT NULL,
 	"duration" integer,
 	"notes" text,
@@ -93,7 +93,7 @@ CREATE TABLE "consultations" (
 CREATE TABLE "lgpd_consents" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"patient_id" integer NOT NULL,
-	"user_id" integer NOT NULL,
+	"user_id" text NOT NULL,
 	"type" varchar(50) NOT NULL,
 	"description" text,
 	"granted" boolean DEFAULT false NOT NULL,
@@ -106,7 +106,7 @@ CREATE TABLE "lgpd_consents" (
 --> statement-breakpoint
 CREATE TABLE "patients" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"user_id" integer NOT NULL,
+	"user_id" text NOT NULL,
 	"name" text NOT NULL,
 	"cpf" text,
 	"email" text,
@@ -130,7 +130,7 @@ CREATE TABLE "patients" (
 --> statement-breakpoint
 CREATE TABLE "sessions" (
 	"id" text PRIMARY KEY NOT NULL,
-	"user_id" integer NOT NULL,
+	"user_id" text NOT NULL,
 	"token" text NOT NULL,
 	"expires_at" timestamp NOT NULL,
 	"ip_address" varchar(45),
@@ -153,7 +153,7 @@ CREATE TABLE "transcriptions" (
 );
 --> statement-breakpoint
 CREATE TABLE "users" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" text PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
 	"email" varchar(255) NOT NULL,
 	"email_verified" boolean DEFAULT false NOT NULL,

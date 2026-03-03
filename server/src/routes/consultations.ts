@@ -25,7 +25,7 @@ export const consultationsRouter = router({
       }).optional()
     )
     .query(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
       const { patientId, status, startDate, endDate, page, limit } = input ?? {
         page: 1,
         limit: 20,
@@ -71,7 +71,7 @@ export const consultationsRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       const [result] = await db
         .select({
@@ -138,7 +138,7 @@ export const consultationsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       // Verificar se o paciente pertence ao psicólogo
       const [patient] = await db
@@ -187,7 +187,7 @@ export const consultationsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       const [existing] = await db
         .select()
@@ -232,7 +232,7 @@ export const consultationsRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       const [existing] = await db
         .select()
@@ -267,7 +267,7 @@ export const consultationsRouter = router({
       }).optional()
     )
     .query(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
       const period = input?.period ?? "month";
 
       const now = new Date();

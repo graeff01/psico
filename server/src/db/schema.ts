@@ -15,7 +15,7 @@ import { relations } from "drizzle-orm";
 // ─── Usuários (Psicólogos) ─────────────────────────────────────────────
 
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+  id: text("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
@@ -35,7 +35,7 @@ export const users = pgTable("users", {
 
 export const sessions = pgTable("sessions", {
   id: text("id").primaryKey(),
-  userId: integer("user_id")
+  userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   token: text("token").notNull().unique(),
@@ -50,7 +50,7 @@ export const sessions = pgTable("sessions", {
 
 export const accounts = pgTable("accounts", {
   id: text("id").primaryKey(),
-  userId: integer("user_id")
+  userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   accountId: text("account_id").notNull(),
@@ -83,7 +83,7 @@ export const patients = pgTable(
   "patients",
   {
     id: serial("id").primaryKey(),
-    userId: integer("user_id")
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
 
@@ -132,7 +132,7 @@ export const consultations = pgTable(
     patientId: integer("patient_id")
       .notNull()
       .references(() => patients.id, { onDelete: "cascade" }),
-    userId: integer("user_id")
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
 
@@ -164,7 +164,7 @@ export const audioRecordings = pgTable(
     consultationId: integer("consultation_id")
       .notNull()
       .references(() => consultations.id, { onDelete: "cascade" }),
-    userId: integer("user_id")
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
 
@@ -213,7 +213,7 @@ export const aiAnalyses = pgTable(
     consultationId: integer("consultation_id")
       .notNull()
       .references(() => consultations.id, { onDelete: "cascade" }),
-    userId: integer("user_id")
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
 
@@ -239,7 +239,7 @@ export const aiChatMessages = pgTable(
   "ai_chat_messages",
   {
     id: serial("id").primaryKey(),
-    userId: integer("user_id")
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     patientId: integer("patient_id").references(() => patients.id, {
@@ -267,7 +267,7 @@ export const lgpdConsents = pgTable("lgpd_consents", {
   patientId: integer("patient_id")
     .notNull()
     .references(() => patients.id, { onDelete: "cascade" }),
-  userId: integer("user_id")
+  userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
 
@@ -289,7 +289,7 @@ export const auditLogs = pgTable(
   "audit_logs",
   {
     id: serial("id").primaryKey(),
-    userId: integer("user_id").references(() => users.id, {
+    userId: text("user_id").references(() => users.id, {
       onDelete: "set null",
     }),
 
@@ -315,7 +315,7 @@ export const auditLogs = pgTable(
 
 export const backups = pgTable("backups", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id")
+  userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
 

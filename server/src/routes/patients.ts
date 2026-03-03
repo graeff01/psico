@@ -76,7 +76,7 @@ export const patientsRouter = router({
       }).optional()
     )
     .query(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
       const { search, status, tags, page, limit } = input ?? {
         search: undefined,
         status: "all" as const,
@@ -144,7 +144,7 @@ export const patientsRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       const [patient] = await db
         .select()
@@ -179,7 +179,7 @@ export const patientsRouter = router({
   create: protectedProcedure
     .input(patientInput)
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
       const encrypted = encryptPatientData(input);
 
       const [newPatient] = await db
@@ -217,7 +217,7 @@ export const patientsRouter = router({
   update: protectedProcedure
     .input(z.object({ id: z.number(), data: patientInput.partial() }))
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       // Verificar propriedade
       const [existing] = await db
@@ -285,7 +285,7 @@ export const patientsRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const userId = Number(ctx.user.id);
+      const userId = ctx.user.id;
 
       const [existing] = await db
         .select()
@@ -311,7 +311,7 @@ export const patientsRouter = router({
     }),
 
   getStats: protectedProcedure.query(async ({ ctx }) => {
-    const userId = Number(ctx.user.id);
+    const userId = ctx.user.id;
 
     const [totalPatients] = await db
       .select({ count: sql<number>`count(*)` })
