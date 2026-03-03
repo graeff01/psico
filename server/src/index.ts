@@ -12,6 +12,7 @@ import {
   authLimiter,
   requestLogger,
 } from "./middleware/security.js";
+import { runMigrations } from "./db/migrate.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -19,6 +20,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// ─── Trust proxy (Railway, Heroku, etc.) ────────────────────────────────
+app.set("trust proxy", 1);
 
 // ─── Segurança ─────────────────────────────────────────────────────────
 app.use(securityHeaders);
@@ -85,8 +89,12 @@ if (env.NODE_ENV === "production") {
 }
 
 // ─── Start ─────────────────────────────────────────────────────────────
-app.listen(env.PORT, () => {
-  console.log(`
+async function start() {
+  // Rodar migrations automaticamente
+  await runMigrations();
+
+  app.listen(env.PORT, () => {
+    console.log(`
   ╔═══════════════════════════════════════════╗
   ║         PsicoIA Manager v1.0.0            ║
   ║─────────────────────────────────────────  ║
@@ -95,7 +103,13 @@ app.listen(env.PORT, () => {
   ║  📊 Servidor rodando na porta ${env.PORT}       ║
   ║  🌍 Ambiente: ${env.NODE_ENV.padEnd(25)}  ║
   ╚═══════════════════════════════════════════╝
-  `);
+    `);
+  });
+}
+
+start().catch((err) => {
+  console.error("❌ Falha ao iniciar servidor:", err);
+  process.exit(1);
 });
 
 export { app, appRouter };

@@ -28,6 +28,7 @@ WORKDIR /app
 COPY --from=server-build /app/server/dist ./server/dist
 COPY --from=server-build /app/server/package.json ./server/package.json
 COPY --from=server-build /app/server/node_modules ./server/node_modules
+COPY --from=server-build /app/server/drizzle ./server/drizzle
 
 # Copy client static build
 COPY --from=client-build /app/client/dist ./client/dist
