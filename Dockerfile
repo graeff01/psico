@@ -2,9 +2,8 @@ FROM node:22-alpine AS base
 
 # ─── Build Client ────────────────────────────────────────────────────────
 FROM base AS client-build
-WORKDIR /app
-COPY .npmrc ./
 WORKDIR /app/client
+COPY .npmrc ./
 COPY client/package.json client/package-lock.json* ./
 RUN npm install
 COPY client/ .
@@ -13,9 +12,8 @@ RUN npx vite build
 
 # ─── Build Server ────────────────────────────────────────────────────────
 FROM base AS server-build
-WORKDIR /app
-COPY .npmrc ./
 WORKDIR /app/server
+COPY .npmrc ./
 COPY server/package.json server/package-lock.json* ./
 RUN npm install
 COPY server/ .
