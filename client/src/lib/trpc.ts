@@ -1,10 +1,8 @@
 import { createTRPCReact } from "@trpc/react-query";
 import { httpBatchLink } from "@trpc/client";
+import type { AppRouter } from "../../../server/src/routes/index.js";
 
-// O tipo AppRouter é importado do server apenas em dev para type-safety
-// Em runtime, o tRPC resolve tudo via HTTP
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const trpc = createTRPCReact<any>();
+export const trpc = createTRPCReact<AppRouter>();
 
 export function getTRPCClient() {
   return trpc.createClient({

@@ -19,6 +19,6 @@
     },
     "baseUrl": "."
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../server/src/routes/index.ts", "../server/src/trpc/index.ts"],
   "exclude": ["node_modules"]
 }
