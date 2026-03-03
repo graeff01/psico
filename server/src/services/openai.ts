@@ -3,7 +3,14 @@ import { env } from "../config/env.js";
 
 let openaiClient: OpenAI | null = null;
 
+export function isOpenAIConfigured(): boolean {
+  return !!env.OPENAI_API_KEY && !env.OPENAI_API_KEY.includes("placeholder") && !env.OPENAI_API_KEY.includes("aqui");
+}
+
 export function getOpenAI(): OpenAI {
+  if (!isOpenAIConfigured()) {
+    throw new Error("OpenAI não configurada. Adicione uma OPENAI_API_KEY válida nas variáveis de ambiente para usar funcionalidades de IA.");
+  }
   if (!openaiClient) {
     openaiClient = new OpenAI({
       apiKey: env.OPENAI_API_KEY,

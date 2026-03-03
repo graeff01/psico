@@ -8,15 +8,29 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "../config/env.js";
 import { nanoid } from "nanoid";
 
-const s3 = new S3Client({
-  endpoint: env.S3_ENDPOINT,
-  region: env.S3_REGION,
-  credentials: {
-    accessKeyId: env.S3_ACCESS_KEY,
-    secretAccessKey: env.S3_SECRET_KEY,
-  },
-  forcePathStyle: true,
-});
+let s3Client: S3Client | null = null;
+
+export function isStorageConfigured(): boolean {
+  return !!env.S3_ENDPOINT && !!env.S3_BUCKET && !!env.S3_ACCESS_KEY && !!env.S3_SECRET_KEY;
+}
+
+function getS3(): S3Client {
+  if (!isStorageConfigured()) {
+    throw new Error("Storage S3 não configurado. Adicione S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY e S3_SECRET_KEY nas variáveis de ambiente.");
+  }
+  if (!s3Client) {
+    s3Client = new S3Client({
+      endpoint: env.S3_ENDPOINT,
+      region: env.S3_REGION,
+      credentials: {
+        accessKeyId: env.S3_ACCESS_KEY!,
+        secretAccessKey: env.S3_SECRET_KEY!,
+      },
+      forcePathStyle: true,
+    });
+  }
+  return s3Client;
+}
 
 export async function uploadAudio(
   buffer: Buffer,
@@ -27,7 +41,7 @@ export async function uploadAudio(
   const extension = mimeType === "audio/webm" ? "webm" : "mp3";
   const s3Key = `audio/${userId}/${consultationId}/${nanoid()}.${extension}`;
 
-  await s3.send(
+  await getS3().send(
     new PutObjectCommand({
       Bucket: env.S3_BUCKET,
       Key: s3Key,
@@ -47,11 +61,11 @@ export async function getAudioUrl(s3Key: string): Promise<string> {
   });
 
   // URL válida por 1 hora
-  return getSignedUrl(s3, command, { expiresIn: 3600 });
+  return getSignedUrl(getS3(), command, { expiresIn: 3600 });
 }
 
 export async function getAudioBuffer(s3Key: string): Promise<Buffer> {
-  const response = await s3.send(
+  const response = await getS3().send(
     new GetObjectCommand({
       Bucket: env.S3_BUCKET,
       Key: s3Key,
@@ -69,7 +83,7 @@ export async function getAudioBuffer(s3Key: string): Promise<Buffer> {
 }
 
 export async function deleteAudio(s3Key: string): Promise<void> {
-  await s3.send(
+  await getS3().send(
     new DeleteObjectCommand({
       Bucket: env.S3_BUCKET,
       Key: s3Key,
@@ -84,7 +98,7 @@ export async function uploadBackup(
 ): Promise<{ s3Key: string; size: number }> {
   const s3Key = `backups/${userId}/${fileName}`;
 
-  await s3.send(
+  await getS3().send(
     new PutObjectCommand({
       Bucket: env.S3_BUCKET,
       Key: s3Key,
