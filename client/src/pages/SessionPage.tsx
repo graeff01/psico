@@ -8,6 +8,7 @@ import {
   Search,
   User,
   Mic,
+  MicOff,
   Pause,
   Play,
   Square,
@@ -21,6 +22,13 @@ import {
   Clock,
   AlertTriangle,
   RotateCcw,
+  ChevronRight,
+  FileAudio,
+  Brain,
+  Upload,
+  FileText,
+  Wand2,
+  Plus,
 } from "lucide-react";
 
 type Phase = "selecting" | "recording" | "processing" | "complete";
@@ -37,10 +45,16 @@ export function SessionPage() {
 
   // Phase state
   const [phase, setPhase] = useState<Phase>("selecting");
-  const [selectedPatient, setSelectedPatient] = useState<{ id: number; name: string } | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const [consultationId, setConsultationId] = useState<number | null>(null);
-  const [processingStep, setProcessingStep] = useState<ProcessingStep>("uploading");
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [processingStep, setProcessingStep] =
+    useState<ProcessingStep>("uploading");
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
@@ -64,10 +78,11 @@ export function SessionPage() {
   const analyze = trpc.ai.analyze.useMutation();
 
   // Patients query
-  const { data: patientsData } = trpc.patients.list.useQuery(
-    { search, page: 1, limit: 50 },
-    { enabled: phase === "selecting" }
-  );
+  const { data: patientsData, isLoading: patientsLoading } =
+    trpc.patients.list.useQuery(
+      { search, page: 1, limit: 50 },
+      { enabled: phase === "selecting" }
+    );
 
   // Wake Lock
   useEffect(() => {
@@ -113,7 +128,6 @@ export function SessionPage() {
       setError(null);
 
       try {
-        // Create consultation
         const consultation = await createConsultation.mutateAsync({
           patientId: patient.id,
           date: new Date().toISOString(),
@@ -121,7 +135,6 @@ export function SessionPage() {
         });
         setConsultationId(consultation.id);
 
-        // Start recording
         await startRecording();
         setPhase("recording");
       } catch (err: any) {
@@ -153,7 +166,13 @@ export function SessionPage() {
   // Processing pipeline
   const pipelineRunRef = useRef(false);
   useEffect(() => {
-    if (phase !== "processing" || !audioBlob || !consultationId || pipelineRunRef.current) return;
+    if (
+      phase !== "processing" ||
+      !audioBlob ||
+      !consultationId ||
+      pipelineRunRef.current
+    )
+      return;
     pipelineRunRef.current = true;
 
     const runPipeline = async () => {
@@ -162,7 +181,8 @@ export function SessionPage() {
         setProcessingStep("uploading");
         const base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
-          reader.onload = () => resolve((reader.result as string).split(",")[1]);
+          reader.onload = () =>
+            resolve((reader.result as string).split(",")[1]);
           reader.onerror = () => reject(new Error("Erro ao ler audio"));
           reader.readAsDataURL(audioBlob);
         });
@@ -198,12 +218,19 @@ export function SessionPage() {
     };
 
     runPipeline();
-  }, [phase, audioBlob, consultationId, duration, uploadAudio, transcribe, analyze]);
+  }, [
+    phase,
+    audioBlob,
+    consultationId,
+    duration,
+    uploadAudio,
+    transcribe,
+    analyze,
+  ]);
 
   const handleRetry = useCallback(() => {
     setError(null);
     pipelineRunRef.current = false;
-    // Re-trigger by resetting the phase
     setPhase("selecting");
     setTimeout(() => setPhase("processing"), 0);
   }, []);
@@ -219,256 +246,511 @@ export function SessionPage() {
     pipelineRunRef.current = false;
   }, [resetRecording]);
 
-  // --- Render ---
-
-  // Phase 1: Select Patient
+  // ═══════════════════════════════════════════════════════════════════
+  // PHASE 1: Select Patient
+  // ═══════════════════════════════════════════════════════════════════
   if (phase === "selecting") {
+    const patients = patientsData?.patients ?? [];
+
     return (
-      <div className="min-h-dvh bg-surface flex flex-col">
+      <div className="min-h-dvh bg-gradient-to-b from-primary-50/60 via-surface to-surface flex flex-col">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-white border-b border-border-light px-4 py-3 flex items-center gap-3">
-          <button
-            onClick={() => navigate("/")}
-            className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-hover transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-text-secondary" />
-          </button>
-          <div>
-            <h1 className="text-lg font-semibold text-text-primary">Iniciar Sessao</h1>
-            <p className="text-xs text-text-muted">Selecione o paciente</p>
-          </div>
-        </div>
-
-        {/* Search */}
-        <div className="px-4 py-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
-            <input
-              type="text"
-              placeholder="Buscar paciente..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-border-light bg-white text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-base"
-              autoFocus
-            />
-          </div>
-        </div>
-
-        {/* Patient List */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4">
-          {patientsData?.patients && patientsData.patients.length > 0 ? (
-            <div className="space-y-2">
-              {patientsData.patients.map((patient: any) => (
-                <button
-                  key={patient.id}
-                  onClick={() => handleSelectPatient({ id: patient.id, name: patient.name })}
-                  disabled={createConsultation.isPending}
-                  className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-border-light hover:border-primary-300 hover:bg-primary-50/30 transition-all active:scale-[0.98] text-left"
-                >
-                  <div className="w-11 h-11 rounded-full bg-primary-50 flex items-center justify-center flex-shrink-0">
-                    <User className="w-5 h-5 text-primary-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-text-primary truncate">{patient.name}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span
-                        className={cn(
-                          "text-xs px-1.5 py-0.5 rounded-full",
-                          patient.status === "active"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-gray-100 text-gray-500"
-                        )}
-                      >
-                        {patient.status === "active" ? "Ativo" : "Inativo"}
-                      </span>
-                      {patient.tags?.slice(0, 2).map((tag: string) => (
-                        <span key={tag} className="text-xs text-text-muted">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <Mic className="w-5 h-5 text-text-muted flex-shrink-0" />
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <User className="w-12 h-12 text-text-muted/30 mb-3" />
-              <p className="text-text-muted text-sm">
-                {search ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
+        <div className="sticky top-0 z-10 backdrop-blur-lg bg-white/80 border-b border-border-light">
+          <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
+            <button
+              onClick={() => navigate("/")}
+              className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface hover:bg-surface-hover transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-text-secondary" />
+            </button>
+            <div className="flex-1">
+              <h1 className="text-lg font-bold text-text-primary">
+                Nova Sessao
+              </h1>
+              <p className="text-xs text-text-muted">
+                Escolha o paciente para iniciar a gravacao
               </p>
             </div>
-          )}
+            <div className="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center">
+              <Mic className="w-5 h-5 text-primary-600" />
+            </div>
+          </div>
+        </div>
 
-          {createConsultation.isPending && (
-            <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl p-6 flex items-center gap-3 shadow-xl">
-                <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />
-                <span className="text-text-primary font-medium">Preparando sessao...</span>
+        <div className="max-w-lg mx-auto w-full flex-1 flex flex-col px-4 pb-6">
+          {/* Search */}
+          <div className="py-4">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-text-muted" />
+              <input
+                type="text"
+                placeholder="Buscar paciente por nome..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-border bg-white text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-400/30 focus:border-primary-400 text-sm shadow-sm"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          {/* Info card */}
+          <div className="mb-4 p-4 rounded-2xl bg-gradient-to-r from-primary-50 to-primary-100/50 border border-primary-200/60">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <FileAudio className="w-4.5 h-4.5 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-primary-900">
+                  Como funciona
+                </p>
+                <p className="text-xs text-primary-700/80 mt-1 leading-relaxed">
+                  Selecione o paciente, grave a sessao inteira, e a IA gera
+                  automaticamente a transcricao, resumo clinico e insights.
+                </p>
               </div>
             </div>
-          )}
+          </div>
+
+          {/* Patient List */}
+          <div className="flex-1">
+            {patientsLoading ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <Loader2 className="w-8 h-8 text-primary-400 animate-spin mb-3" />
+                <p className="text-sm text-text-muted">
+                  Carregando pacientes...
+                </p>
+              </div>
+            ) : patients.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-text-muted uppercase tracking-wider px-1 mb-3">
+                  {patients.length} paciente{patients.length !== 1 ? "s" : ""}
+                </p>
+                {patients.map((patient: any) => (
+                  <button
+                    key={patient.id}
+                    onClick={() =>
+                      handleSelectPatient({
+                        id: patient.id,
+                        name: patient.name,
+                      })
+                    }
+                    disabled={createConsultation.isPending}
+                    className="w-full flex items-center gap-3.5 p-4 rounded-2xl bg-white border border-border-light hover:border-primary-300 hover:shadow-md hover:shadow-primary-500/5 transition-all active:scale-[0.98] text-left group"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-100 to-primary-50 flex items-center justify-center flex-shrink-0 group-hover:from-primary-200 group-hover:to-primary-100 transition-colors">
+                      <span className="text-base font-bold text-primary-600">
+                        {patient.name?.[0]?.toUpperCase() ?? "?"}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-text-primary text-sm truncate">
+                        {patient.name}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span
+                          className={cn(
+                            "text-[11px] px-2 py-0.5 rounded-full font-medium",
+                            patient.status === "active"
+                              ? "bg-emerald-50 text-emerald-600 border border-emerald-200/60"
+                              : "bg-gray-50 text-gray-400 border border-gray-200/60"
+                          )}
+                        >
+                          {patient.status === "active" ? "Ativo" : "Inativo"}
+                        </span>
+                        {patient.tags?.slice(0, 2).map((tag: string) => (
+                          <span
+                            key={tag}
+                            className="text-[11px] text-text-muted bg-surface px-1.5 py-0.5 rounded"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-text-muted group-hover:text-primary-500 transition-colors flex-shrink-0" />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-16 h-16 rounded-3xl bg-surface flex items-center justify-center mb-4">
+                  <User className="w-7 h-7 text-text-muted/40" />
+                </div>
+                <p className="text-sm font-medium text-text-secondary mb-1">
+                  {search
+                    ? "Nenhum paciente encontrado"
+                    : "Nenhum paciente cadastrado"}
+                </p>
+                <p className="text-xs text-text-muted mb-4">
+                  {search
+                    ? "Tente buscar com outro nome"
+                    : "Cadastre um paciente para iniciar"}
+                </p>
+                {!search && (
+                  <button
+                    onClick={() => navigate("/patients")}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Cadastrar Paciente
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Loading overlay */}
+        {createConsultation.isPending && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-3xl p-8 flex flex-col items-center gap-4 shadow-2xl mx-6 max-w-xs w-full">
+              <div className="w-14 h-14 rounded-2xl bg-primary-50 flex items-center justify-center">
+                <Loader2 className="w-7 h-7 text-primary-600 animate-spin" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold text-text-primary">
+                  Preparando sessao...
+                </p>
+                <p className="text-xs text-text-muted mt-1">
+                  Aguarde um momento
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
-  // Phase 2: Recording
+  // ═══════════════════════════════════════════════════════════════════
+  // PHASE 2: Recording
+  // ═══════════════════════════════════════════════════════════════════
   if (phase === "recording") {
+    const hours = Math.floor(duration / 3600);
+    const minutes = Math.floor((duration % 3600) / 60);
+    const seconds = duration % 60;
+    const pad = (n: number) => n.toString().padStart(2, "0");
+
     return (
-      <div className="min-h-dvh bg-gradient-to-b from-gray-900 to-gray-950 flex flex-col text-white">
+      <div className="min-h-dvh bg-[#0c0f1a] flex flex-col relative overflow-hidden">
+        {/* Background ambient glow */}
+        <div
+          className={cn(
+            "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-[120px] opacity-20 transition-colors duration-1000",
+            isPaused ? "bg-amber-500" : "bg-red-500 animate-recording-pulse"
+          )}
+        />
+
         {/* Top bar */}
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="relative z-10 flex items-center justify-between px-5 pt-5 pb-3">
           <button
             onClick={handleCancelRecording}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white/8 hover:bg-white/15 transition-colors backdrop-blur-sm border border-white/10"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4.5 h-4.5 text-white/70" />
           </button>
-          <div className="text-center">
-            <p className="text-sm text-white/60 truncate max-w-[200px]">
+
+          <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/8 backdrop-blur-sm border border-white/10">
+            <User className="w-3.5 h-3.5 text-white/50" />
+            <span className="text-xs font-medium text-white/70 truncate max-w-[180px]">
               {selectedPatient?.name}
-            </p>
+            </span>
           </div>
-          <div className="w-10" /> {/* Spacer */}
+
+          <div className="w-10" />
         </div>
 
-        {/* Timer */}
-        <div className="flex-1 flex flex-col items-center justify-center px-4">
-          <div className={cn(
-            "text-7xl sm:text-8xl font-mono font-bold tabular-nums tracking-tight",
-            isPaused ? "text-amber-400" : "text-white animate-recording-pulse"
-          )}>
-            {formatDuration(duration)}
+        {/* Center: Timer */}
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
+          {/* Recording indicator */}
+          <div className="flex items-center gap-2.5 mb-8">
+            <div className="relative">
+              <div
+                className={cn(
+                  "w-3 h-3 rounded-full",
+                  isPaused ? "bg-amber-400" : "bg-red-500"
+                )}
+              />
+              {!isPaused && (
+                <div className="absolute inset-0 w-3 h-3 rounded-full bg-red-500 animate-ping" />
+              )}
+            </div>
+            <span
+              className={cn(
+                "text-sm font-semibold uppercase tracking-widest",
+                isPaused ? "text-amber-400" : "text-red-400"
+              )}
+            >
+              {isPaused ? "Pausado" : "Gravando"}
+            </span>
           </div>
 
-          {/* Status indicator */}
-          <div className="flex items-center gap-2 mt-4">
-            {!isPaused ? (
+          {/* Timer display */}
+          <div className="flex items-baseline gap-1">
+            {hours > 0 && (
               <>
-                <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse-ring" />
-                <span className="text-red-400 text-sm font-medium">Gravando...</span>
-              </>
-            ) : (
-              <>
-                <div className="w-3 h-3 rounded-full bg-amber-400" />
-                <span className="text-amber-400 text-sm font-medium">Pausado</span>
+                <span className="text-6xl sm:text-7xl font-mono font-bold text-white tabular-nums">
+                  {pad(hours)}
+                </span>
+                <span className="text-3xl sm:text-4xl font-mono font-bold text-white/30 mx-1">
+                  :
+                </span>
               </>
             )}
+            <span
+              className={cn(
+                "font-mono font-bold tabular-nums transition-colors",
+                hours > 0
+                  ? "text-6xl sm:text-7xl text-white"
+                  : "text-7xl sm:text-8xl text-white"
+              )}
+            >
+              {pad(minutes)}
+            </span>
+            <span
+              className={cn(
+                "font-mono font-bold mx-1",
+                hours > 0
+                  ? "text-3xl sm:text-4xl text-white/30"
+                  : "text-4xl sm:text-5xl text-white/30"
+              )}
+            >
+              :
+            </span>
+            <span
+              className={cn(
+                "font-mono font-bold tabular-nums transition-colors",
+                hours > 0
+                  ? "text-6xl sm:text-7xl text-white"
+                  : "text-7xl sm:text-8xl text-white"
+              )}
+            >
+              {pad(seconds)}
+            </span>
+          </div>
+
+          {/* Audio visualization placeholder */}
+          <div className="flex items-center gap-[3px] mt-8 h-8">
+            {Array.from({ length: 24 }).map((_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "w-[3px] rounded-full transition-all duration-150",
+                  isPaused
+                    ? "bg-white/10 h-1"
+                    : "bg-gradient-to-t from-red-500/60 to-red-400/40"
+                )}
+                style={
+                  !isPaused
+                    ? {
+                        height: `${Math.max(4, Math.random() * 32)}px`,
+                        animationDelay: `${i * 50}ms`,
+                      }
+                    : undefined
+                }
+              />
+            ))}
           </div>
 
           {/* Duration warning */}
           {duration > 4500 && (
-            <div className="flex items-center gap-2 mt-6 px-4 py-2 rounded-lg bg-amber-500/20 border border-amber-500/30">
+            <div className="flex items-center gap-2 mt-8 px-4 py-2.5 rounded-2xl bg-amber-500/15 border border-amber-500/20 backdrop-blur-sm">
               <AlertTriangle className="w-4 h-4 text-amber-400" />
-              <span className="text-amber-300 text-xs">Aproximando do limite de 80 minutos</span>
+              <span className="text-amber-300 text-xs font-medium">
+                Aproximando do limite de 80 minutos
+              </span>
             </div>
           )}
         </div>
 
         {/* Controls */}
-        <div className="pb-12 pt-8 flex items-center justify-center gap-8">
+        <div className="relative z-10 pb-14 pt-6 flex items-center justify-center gap-10">
           {/* Pause/Resume */}
           <button
             onClick={isPaused ? resumeRecording : pauseRecording}
-            className="w-16 h-16 rounded-full bg-amber-500 hover:bg-amber-600 active:scale-95 flex items-center justify-center transition-all shadow-lg shadow-amber-500/30"
+            className={cn(
+              "w-16 h-16 rounded-full flex items-center justify-center transition-all active:scale-90",
+              isPaused
+                ? "bg-emerald-500 shadow-lg shadow-emerald-500/30 hover:bg-emerald-400"
+                : "bg-white/15 border border-white/20 hover:bg-white/25 backdrop-blur-sm"
+            )}
           >
             {isPaused ? (
-              <Play className="w-7 h-7 text-white ml-1" />
+              <Play className="w-6 h-6 text-white ml-0.5" />
             ) : (
-              <Pause className="w-7 h-7 text-white" />
+              <Pause className="w-6 h-6 text-white" />
             )}
           </button>
 
           {/* Stop */}
           <button
             onClick={handleStopRecording}
-            className="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 active:scale-95 flex items-center justify-center transition-all shadow-lg shadow-red-500/30"
+            className="w-20 h-20 rounded-full bg-red-500 hover:bg-red-400 active:scale-90 flex items-center justify-center transition-all shadow-xl shadow-red-500/40 ring-4 ring-red-500/20"
           >
-            <Square className="w-8 h-8 text-white fill-white" />
+            <Square className="w-7 h-7 text-white fill-white rounded-sm" />
           </button>
+
+          {/* Mute indicator (visual only) */}
+          <div className="w-16 h-16 rounded-full bg-white/8 border border-white/10 flex items-center justify-center">
+            {isPaused ? (
+              <MicOff className="w-5 h-5 text-white/30" />
+            ) : (
+              <Mic className="w-5 h-5 text-red-400" />
+            )}
+          </div>
+        </div>
+
+        {/* Bottom label */}
+        <div className="relative z-10 pb-6 text-center">
+          <p className="text-[11px] text-white/25 font-medium">
+            {isPaused
+              ? "Toque em play para retomar"
+              : "Toque no botao vermelho para finalizar"}
+          </p>
         </div>
       </div>
     );
   }
 
-  // Phase 3: Processing
+  // ═══════════════════════════════════════════════════════════════════
+  // PHASE 3: Processing
+  // ═══════════════════════════════════════════════════════════════════
   if (phase === "processing") {
-    const steps: { key: ProcessingStep; label: string }[] = [
-      { key: "uploading", label: "Enviando audio" },
-      { key: "transcribing", label: "Transcrevendo com IA" },
-      { key: "analyzing", label: "Gerando analise clinica" },
+    const steps: { key: ProcessingStep; label: string; desc: string; icon: typeof Upload }[] = [
+      { key: "uploading", label: "Enviando audio", desc: "Fazendo upload do arquivo de audio", icon: Upload },
+      { key: "transcribing", label: "Transcrevendo", desc: "IA convertendo fala em texto", icon: FileText },
+      { key: "analyzing", label: "Analisando", desc: "Gerando resumo e insights clinicos", icon: Wand2 },
     ];
 
-    const stepOrder: ProcessingStep[] = ["uploading", "transcribing", "analyzing"];
+    const stepOrder: ProcessingStep[] = [
+      "uploading",
+      "transcribing",
+      "analyzing",
+    ];
     const currentIdx = stepOrder.indexOf(processingStep);
 
     return (
-      <div className="min-h-dvh bg-surface flex flex-col items-center justify-center px-6">
-        <div className="w-full max-w-sm">
+      <div className="min-h-dvh bg-gradient-to-b from-primary-50/40 to-surface flex flex-col items-center justify-center px-6">
+        <div className="w-full max-w-md">
           {/* Header */}
           <div className="text-center mb-10">
-            <div className="w-16 h-16 rounded-full bg-primary-50 flex items-center justify-center mx-auto mb-4">
-              <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+            <div className="relative w-20 h-20 mx-auto mb-5">
+              <div className="absolute inset-0 rounded-3xl bg-primary-100 animate-pulse" />
+              <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-500/20">
+                <Brain className="w-9 h-9 text-white" />
+              </div>
             </div>
-            <h2 className="text-xl font-semibold text-text-primary">Processando sessao</h2>
-            <p className="text-sm text-text-muted mt-1">{selectedPatient?.name}</p>
-            <p className="text-xs text-text-muted mt-0.5">
-              Duracao: {formatDuration(duration)}
-            </p>
+            <h2 className="text-xl font-bold text-text-primary">
+              Processando sessao
+            </h2>
+            <div className="flex items-center justify-center gap-3 mt-2">
+              <span className="text-sm text-text-muted">
+                {selectedPatient?.name}
+              </span>
+              <span className="text-text-muted/40">|</span>
+              <span className="text-sm text-text-muted flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" />
+                {formatDuration(duration)}
+              </span>
+            </div>
           </div>
 
           {/* Steps */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             {steps.map((step, idx) => {
               const isComplete = currentIdx > idx || processingStep === "done";
               const isActive = currentIdx === idx && !error;
-              const isPending = currentIdx < idx;
+              const isStepPending = currentIdx < idx;
+              const StepIcon = step.icon;
 
               return (
                 <div
                   key={step.key}
                   className={cn(
-                    "flex items-center gap-3 p-4 rounded-xl border transition-all",
-                    isComplete && "bg-emerald-50 border-emerald-200",
-                    isActive && "bg-primary-50 border-primary-200",
-                    isPending && "bg-white border-border-light opacity-50",
-                    error && isActive && "bg-red-50 border-red-200"
+                    "flex items-center gap-4 p-4 rounded-2xl border transition-all",
+                    isComplete &&
+                      "bg-emerald-50/80 border-emerald-200/60 shadow-sm",
+                    isActive &&
+                      "bg-white border-primary-200 shadow-md shadow-primary-500/5",
+                    isStepPending && "bg-surface/50 border-border-light opacity-40",
+                    error && isActive && "bg-red-50 border-red-200 shadow-sm"
                   )}
                 >
-                  {isComplete ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                  ) : isActive && !error ? (
-                    <Loader2 className="w-5 h-5 text-primary-600 animate-spin flex-shrink-0" />
-                  ) : error && isActive ? (
-                    <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                  ) : (
-                    <div className="w-5 h-5 rounded-full border-2 border-border flex-shrink-0" />
-                  )}
-                  <span
+                  <div
                     className={cn(
-                      "text-sm font-medium",
-                      isComplete && "text-emerald-700",
-                      isActive && !error && "text-primary-700",
-                      error && isActive && "text-red-700",
-                      isPending && "text-text-muted"
+                      "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors",
+                      isComplete && "bg-emerald-100",
+                      isActive && !error && "bg-primary-100",
+                      isStepPending && "bg-surface",
+                      error && isActive && "bg-red-100"
                     )}
                   >
-                    {step.label}
-                  </span>
+                    {isComplete ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    ) : isActive && !error ? (
+                      <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />
+                    ) : error && isActive ? (
+                      <AlertTriangle className="w-5 h-5 text-red-500" />
+                    ) : (
+                      <StepIcon className="w-5 h-5 text-text-muted/40" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className={cn(
+                        "text-sm font-semibold",
+                        isComplete && "text-emerald-700",
+                        isActive && !error && "text-primary-700",
+                        error && isActive && "text-red-700",
+                        isStepPending && "text-text-muted"
+                      )}
+                    >
+                      {step.label}
+                    </p>
+                    <p
+                      className={cn(
+                        "text-xs mt-0.5",
+                        isComplete && "text-emerald-600/70",
+                        isActive && !error && "text-primary-600/70",
+                        error && isActive && "text-red-600/70",
+                        isStepPending && "text-text-muted/60"
+                      )}
+                    >
+                      {isComplete ? "Concluido" : step.desc}
+                    </p>
+                  </div>
                 </div>
               );
             })}
           </div>
 
+          {/* Progress bar */}
+          {!error && (
+            <div className="mt-6 h-1.5 bg-surface rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-primary-500 to-primary-400 rounded-full transition-all duration-700 ease-out"
+                style={{
+                  width:
+                    processingStep === "done"
+                      ? "100%"
+                      : `${((currentIdx + 0.5) / 3) * 100}%`,
+                }}
+              />
+            </div>
+          )}
+
           {/* Error state */}
           {error && (
-            <div className="mt-6 text-center">
-              <p className="text-sm text-red-600 mb-4">{error}</p>
+            <div className="mt-8">
+              <div className="p-4 rounded-2xl bg-red-50 border border-red-200/60 mb-4">
+                <p className="text-sm text-red-700 font-medium mb-1">
+                  Erro no processamento
+                </p>
+                <p className="text-xs text-red-600/80">{error}</p>
+              </div>
               <button
                 onClick={handleRetry}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary-600 text-white font-medium hover:bg-primary-700 transition-colors"
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-primary-600 text-white font-semibold hover:bg-primary-700 transition-colors shadow-sm"
               >
                 <RotateCcw className="w-4 h-4" />
                 Tentar novamente
@@ -477,7 +759,7 @@ export function SessionPage() {
           )}
 
           {!error && (
-            <p className="text-center text-xs text-text-muted mt-8">
+            <p className="text-center text-xs text-text-muted mt-6">
               Isso pode levar alguns minutos para sessoes longas...
             </p>
           )}
@@ -486,34 +768,48 @@ export function SessionPage() {
     );
   }
 
-  // Phase 4: Complete
+  // ═══════════════════════════════════════════════════════════════════
+  // PHASE 4: Complete
+  // ═══════════════════════════════════════════════════════════════════
   return (
     <div className="min-h-dvh bg-surface">
       {/* Success header */}
-      <div className="bg-gradient-to-b from-emerald-50 to-surface px-4 pt-8 pb-6 text-center">
-        <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4 animate-slide-up">
-          <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-        </div>
-        <h2 className="text-xl font-semibold text-text-primary animate-fade-in">
-          Sessao concluida!
-        </h2>
-        <p className="text-sm text-text-muted mt-1">{selectedPatient?.name}</p>
-        <div className="flex items-center justify-center gap-1 mt-1">
-          <Clock className="w-3.5 h-3.5 text-text-muted" />
-          <span className="text-sm text-text-muted">{formatDuration(duration)}</span>
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-100/80 via-emerald-50/40 to-surface" />
+        <div className="relative px-6 pt-10 pb-8 text-center">
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-emerald-500/20 animate-slide-up">
+            <CheckCircle2 className="w-10 h-10 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-text-primary animate-fade-in">
+            Sessao concluida!
+          </h2>
+          <div className="flex items-center justify-center gap-3 mt-2 animate-fade-in">
+            <span className="text-sm text-text-muted font-medium">
+              {selectedPatient?.name}
+            </span>
+            <span className="text-text-muted/40">|</span>
+            <span className="text-sm text-text-muted flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" />
+              {formatDuration(duration)}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Results */}
-      <div className="px-4 pb-8 space-y-4">
+      <div className="max-w-lg mx-auto px-4 pb-10 space-y-4 -mt-2">
         {analysisResult && (
           <>
             {/* Summary */}
-            <div className="bg-white rounded-xl border border-border-light p-5 animate-fade-in">
-              <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary-500" />
-                Resumo Clinico
-              </h3>
+            <div className="bg-white rounded-2xl border border-border-light p-6 shadow-sm animate-fade-in">
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-primary-50 flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-primary-600" />
+                </div>
+                <h3 className="text-sm font-bold text-text-primary">
+                  Resumo Clinico
+                </h3>
+              </div>
               <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
                 {analysisResult.summary}
               </p>
@@ -521,34 +817,53 @@ export function SessionPage() {
 
             {/* Insights */}
             {analysisResult.insights.length > 0 && (
-              <div className="bg-white rounded-xl border border-border-light p-5 animate-fade-in">
-                <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
-                  <Eye className="w-4 h-4 text-warm-500" />
-                  Insights Clinicos
-                </h3>
-                <ul className="space-y-2.5">
-                  {analysisResult.insights.map((insight: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <Sparkles className="w-3.5 h-3.5 text-warm-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-text-secondary leading-relaxed">{insight}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="bg-white rounded-2xl border border-border-light p-6 shadow-sm animate-fade-in">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-8 h-8 rounded-xl bg-warm-50 flex items-center justify-center">
+                    <Eye className="w-4 h-4 text-warm-600" />
+                  </div>
+                  <h3 className="text-sm font-bold text-text-primary">
+                    Insights Clinicos
+                  </h3>
+                </div>
+                <div className="space-y-3">
+                  {analysisResult.insights.map(
+                    (insight: string, i: number) => (
+                      <div
+                        key={i}
+                        className="flex items-start gap-3 p-3 rounded-xl bg-warm-50/40"
+                      >
+                        <div className="w-5 h-5 rounded-lg bg-warm-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-[10px] font-bold text-warm-600">
+                            {i + 1}
+                          </span>
+                        </div>
+                        <span className="text-sm text-text-secondary leading-relaxed">
+                          {insight}
+                        </span>
+                      </div>
+                    )
+                  )}
+                </div>
               </div>
             )}
 
             {/* Tags */}
             {analysisResult.suggestedTags.length > 0 && (
-              <div className="bg-white rounded-xl border border-border-light p-5 animate-fade-in">
-                <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
-                  <Tag className="w-4 h-4 text-sage-500" />
-                  Tags Sugeridas
-                </h3>
+              <div className="bg-white rounded-2xl border border-border-light p-6 shadow-sm animate-fade-in">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-8 h-8 rounded-xl bg-sage-50 flex items-center justify-center">
+                    <Tag className="w-4 h-4 text-sage-600" />
+                  </div>
+                  <h3 className="text-sm font-bold text-text-primary">
+                    Tags Sugeridas
+                  </h3>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {analysisResult.suggestedTags.map((tag: string) => (
                     <span
                       key={tag}
-                      className="px-3 py-1 text-xs font-medium rounded-full bg-sage-50 text-sage-700 border border-sage-200"
+                      className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-sage-50 text-sage-700 border border-sage-200/60"
                     >
                       {tag}
                     </span>
@@ -560,20 +875,26 @@ export function SessionPage() {
         )}
 
         {/* Actions */}
-        <div className="space-y-3 pt-2">
+        <div className="space-y-3 pt-4">
           <button
             onClick={() => navigate(`/consultations/${consultationId}`)}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-primary-600 text-white font-medium hover:bg-primary-700 transition-colors"
+            className="w-full flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl bg-primary-600 text-white font-semibold hover:bg-primary-700 transition-colors shadow-sm"
           >
-            <Eye className="w-4 h-4" />
+            <Eye className="w-4.5 h-4.5" />
             Ver detalhes completos
           </button>
           <button
             onClick={handleNewSession}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white border border-border-light text-text-primary font-medium hover:bg-surface-hover transition-colors"
+            className="w-full flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl bg-white border border-border text-text-primary font-semibold hover:bg-surface-hover transition-colors"
           >
-            <Mic className="w-4 h-4" />
+            <Mic className="w-4.5 h-4.5" />
             Nova sessao
+          </button>
+          <button
+            onClick={() => navigate("/")}
+            className="w-full text-center py-2 text-sm text-text-muted hover:text-text-secondary transition-colors"
+          >
+            Voltar ao Dashboard
           </button>
         </div>
       </div>

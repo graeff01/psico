@@ -5,7 +5,7 @@ import { db } from "../db/index.js";
 import { audioRecordings, consultations } from "../db/schema.js";
 import { encrypt, decrypt } from "../utils/encryption.js";
 import { logAudit, getClientIP } from "../utils/audit.js";
-import { uploadAudio, getAudioUrl, deleteAudio } from "../services/storage.js";
+import { uploadAudio, getAudioUrl, deleteAudio, isStorageConfigured } from "../services/storage.js";
 
 export const audioRouter = router({
   // Upload de áudio via base64 (gravado no browser)
@@ -44,13 +44,25 @@ export const audioRouter = router({
         throw new Error("Arquivo de áudio muito grande (máximo 500MB)");
       }
 
-      // Upload para S3
-      const { s3Key, size } = await uploadAudio(
-        buffer,
-        userId,
-        input.consultationId,
-        input.mimeType
-      );
+      let s3Key: string;
+      let size: number;
+
+      if (isStorageConfigured()) {
+        // Upload para S3
+        const result = await uploadAudio(
+          buffer,
+          userId,
+          input.consultationId,
+          input.mimeType
+        );
+        s3Key = result.s3Key;
+        size = result.size;
+      } else {
+        // Sem S3: salvar referência local (áudio em base64 no campo s3Key)
+        s3Key = `local/${userId}/${input.consultationId}/${input.fileName}`;
+        size = buffer.length;
+        console.warn("⚠️ S3 não configurado. Áudio salvo apenas como referência.");
+      }
 
       // Salvar referência no banco
       const [recording] = await db
