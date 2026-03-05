@@ -28,6 +28,41 @@ async function dropAllTables() {
   }
 }
 
+async function applyExtraMigrations() {
+  const client = await pool.connect();
+  try {
+    await client.query(`ALTER TABLE "patients" ADD COLUMN IF NOT EXISTS "anamnesis" text`);
+    await client.query(`ALTER TABLE "ai_analyses" ADD COLUMN IF NOT EXISTS "risk_level" varchar(20) DEFAULT 'none'`);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "payments" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "consultation_id" integer REFERENCES "consultations"("id") ON DELETE SET NULL,
+        "patient_id" integer NOT NULL REFERENCES "patients"("id") ON DELETE CASCADE,
+        "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "amount" integer NOT NULL,
+        "status" varchar(20) DEFAULT 'pending' NOT NULL,
+        "method" varchar(30),
+        "notes" text,
+        "receipt_number" varchar(50),
+        "paid_at" timestamp,
+        "created_at" timestamp DEFAULT now() NOT NULL,
+        "updated_at" timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS "payments_patient_id_idx" ON "payments" ("patient_id")`);
+    await client.query(`CREATE INDEX IF NOT EXISTS "payments_user_id_idx" ON "payments" ("user_id")`);
+    await client.query(`CREATE INDEX IF NOT EXISTS "payments_status_idx" ON "payments" ("status")`);
+    await client.query(`CREATE INDEX IF NOT EXISTS "payments_paid_at_idx" ON "payments" ("paid_at")`);
+    console.log("✅ Extra migrations (v2) aplicadas");
+  } catch (err: any) {
+    if (!err.message?.includes("already exists")) {
+      console.warn("⚠️ Extra migrations warning:", err.message);
+    }
+  } finally {
+    client.release();
+  }
+}
+
 export async function runMigrations() {
   try {
     const migrationsFolder = path.resolve(__dirname, "../../drizzle");
@@ -37,8 +72,6 @@ export async function runMigrations() {
       await migrate(db, { migrationsFolder });
       console.log("✅ Migrations aplicadas com sucesso");
     } catch (error: any) {
-      // Se der conflito de schema (tipo errado, tabela já existe com schema diferente),
-      // dropar tudo e tentar novamente (só funciona enquanto não há dados reais)
       if (
         error.message?.includes("already exists") ||
         error.message?.includes("type") ||
@@ -53,6 +86,9 @@ export async function runMigrations() {
         throw error;
       }
     }
+
+    // Apply schema changes not tracked by drizzle journal
+    await applyExtraMigrations();
   } catch (error) {
     console.error("❌ Erro ao rodar migrations:", error);
     throw error;

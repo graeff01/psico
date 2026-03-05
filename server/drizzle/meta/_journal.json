@@ -8,13 +8,6 @@
       "when": 1772566694746,
       "tag": "0000_dashing_skin",
       "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1772800000000,
-      "tag": "0001_add_payments_anamnesis_risk",
-      "breakpoints": true
     }
   ]
 }
