@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Users,
   Calendar,
+  Mic,
   Settings,
   LogOut,
   Menu,
@@ -18,6 +19,7 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Pacientes", href: "/patients", icon: Users },
   { name: "Consultas", href: "/consultations", icon: Calendar },
+  { name: "Sessão", href: "/session", icon: Mic },
   { name: "Configurações", href: "/settings", icon: Settings },
 ];
 

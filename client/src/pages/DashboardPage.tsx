@@ -185,7 +185,7 @@ export function DashboardPage() {
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Link
-            to="/consultations"
+            to="/session"
             className="flex items-center gap-3 p-4 rounded-lg border border-border-light hover:border-primary-200 hover:bg-primary-50/50 transition-colors group"
           >
             <div className="w-10 h-10 rounded-lg bg-sage-50 flex items-center justify-center group-hover:bg-sage-100">
@@ -193,10 +193,10 @@ export function DashboardPage() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-text-primary">
-                Nova Consulta
+                Iniciar Sessao
               </p>
               <p className="text-xs text-text-muted">
-                Gravar e transcrever
+                Gravar e transcrever com IA
               </p>
             </div>
             <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-primary-600" />
@@ -251,6 +251,15 @@ export function DashboardPage() {
           e CFP
         </span>
       </div>
+
+      {/* Mobile FAB - Iniciar Sessão */}
+      <Link
+        to="/session"
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary-600 text-white shadow-lg shadow-primary-600/30 flex items-center justify-center hover:bg-primary-700 active:scale-95 transition-all lg:hidden z-30"
+        aria-label="Iniciar Sessão"
+      >
+        <Mic className="w-6 h-6" />
+      </Link>
     </div>
   );
 }

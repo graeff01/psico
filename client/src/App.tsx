@@ -9,6 +9,7 @@ import { PatientDetailPage } from "./pages/PatientDetailPage";
 import { ConsultationsPage } from "./pages/ConsultationsPage";
 import { ConsultationDetailPage } from "./pages/ConsultationDetailPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { SessionPage } from "./pages/SessionPage";
 import { AIChatFloat } from "./components/AIChatFloat";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -59,6 +60,14 @@ export default function App() {
             <PublicRoute>
               <RegisterPage />
             </PublicRoute>
+          }
+        />
+        <Route
+          path="/session"
+          element={
+            <ProtectedRoute>
+              <SessionPage />
+            </ProtectedRoute>
           }
         />
         <Route
