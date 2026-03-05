@@ -16,8 +16,9 @@ import {
   transcribeAudio,
   generateClinicalSummary,
   sendContextualMessage,
+  isOpenAIConfigured,
 } from "../services/openai.js";
-import { getAudioBuffer } from "../services/storage.js";
+import { getAudioBuffer, isStorageConfigured } from "../services/storage.js";
 import { nanoid } from "nanoid";
 
 export const aiRouter = router({
@@ -25,6 +26,13 @@ export const aiRouter = router({
   transcribe: protectedProcedure
     .input(z.object({ audioRecordingId: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      if (!isOpenAIConfigured()) {
+        throw new Error("IA nao configurada. Adicione a OPENAI_API_KEY nas variaveis de ambiente do Railway para usar transcricao e analise.");
+      }
+      if (!isStorageConfigured()) {
+        throw new Error("Storage S3 nao configurado. Adicione as variaveis S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY e S3_SECRET_KEY no Railway para usar transcricao.");
+      }
+
       const userId = ctx.user.id;
 
       // Buscar áudio
@@ -109,6 +117,10 @@ export const aiRouter = router({
   analyze: protectedProcedure
     .input(z.object({ consultationId: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      if (!isOpenAIConfigured()) {
+        throw new Error("IA nao configurada. Adicione a OPENAI_API_KEY nas variaveis de ambiente do Railway.");
+      }
+
       const userId = ctx.user.id;
 
       // Verificar propriedade
@@ -188,6 +200,10 @@ export const aiRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (!isOpenAIConfigured()) {
+        throw new Error("IA nao configurada. Adicione a OPENAI_API_KEY nas variaveis de ambiente do Railway.");
+      }
+
       const userId = ctx.user.id;
       const sessionId = input.sessionId || nanoid();
 
