@@ -1,58 +1,25 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { trpc } from "../lib/trpc";
-import { toast } from "sonner";
-import { formatDate, formatDateTime } from "../lib/utils";
-import { CONSULTATION_STATUS, CLINICAL_TAGS } from "../lib/types";
+import { formatDateTime } from "../lib/utils";
+import { CONSULTATION_STATUS } from "../lib/types";
 import {
-  Plus,
+  Mic,
   Calendar,
   ChevronRight,
   Loader2,
-  X,
   User,
   Clock,
 } from "lucide-react";
 
 export function ConsultationsPage() {
-  const [showForm, setShowForm] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("");
 
-  const { data: patientsData } = trpc.patients.list.useQuery({
-    limit: 100,
-  });
-
-  const { data, isLoading, refetch } = trpc.consultations.list.useQuery({
+  const { data, isLoading } = trpc.consultations.list.useQuery({
     status: statusFilter || undefined,
     page: 1,
     limit: 50,
   });
-
-  const createConsultation = trpc.consultations.create.useMutation({
-    onSuccess: () => {
-      toast.success("Consulta criada com sucesso!");
-      setShowForm(false);
-      refetch();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const [form, setForm] = useState({
-    patientId: 0,
-    date: new Date().toISOString().slice(0, 16),
-    notes: "",
-    tags: [] as string[],
-    status: "scheduled" as const,
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.patientId) {
-      toast.error("Selecione um paciente");
-      return;
-    }
-    createConsultation.mutate(form);
-  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -64,126 +31,22 @@ export function ConsultationsPage() {
             {data?.total ?? 0} consultas registradas
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
+        <Link
+          to="/session"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
         >
-          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? "Cancelar" : "Nova Consulta"}
-        </button>
+          <Mic className="w-4 h-4" />
+          Gravar Sessao
+        </Link>
       </div>
 
-      {/* Form */}
-      {showForm && (
-        <div className="bg-white rounded-xl border border-border-light p-6 animate-slide-up">
-          <h3 className="text-sm font-semibold text-text-primary mb-4">
-            Agendar nova consulta
-          </h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">
-                  Paciente *
-                </label>
-                <select
-                  value={form.patientId}
-                  onChange={(e) =>
-                    setForm({ ...form, patientId: Number(e.target.value) })
-                  }
-                  required
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                >
-                  <option value={0}>Selecione o paciente</option>
-                  {patientsData?.patients?.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">
-                  Data e hora *
-                </label>
-                <input
-                  type="datetime-local"
-                  value={form.date}
-                  onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  required
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">
-                Anotações iniciais
-              </label>
-              <textarea
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                rows={3}
-                placeholder="Observações prévias da consulta..."
-                className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 resize-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-text-secondary mb-2">
-                Tags
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {CLINICAL_TAGS.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() =>
-                      setForm((prev) => ({
-                        ...prev,
-                        tags: prev.tags.includes(tag)
-                          ? prev.tags.filter((t) => t !== tag)
-                          : [...prev.tags, tag],
-                      }))
-                    }
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                      form.tags.includes(tag)
-                        ? "bg-primary-100 text-primary-700 border border-primary-300"
-                        : "bg-surface text-text-secondary border border-border hover:border-primary-200"
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex gap-2 justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="px-4 py-2 rounded-lg text-sm text-text-secondary hover:bg-surface-hover"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={createConsultation.isPending}
-                className="px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-60"
-              >
-                {createConsultation.isPending ? "Criando..." : "Criar Consulta"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
       {/* Status Filter */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {[
           { value: "", label: "Todas" },
           { value: "scheduled", label: "Agendadas" },
           { value: "in_progress", label: "Em Andamento" },
-          { value: "completed", label: "Concluídas" },
+          { value: "completed", label: "Concluidas" },
           { value: "cancelled", label: "Canceladas" },
         ].map((filter) => (
           <button
@@ -261,8 +124,15 @@ export function ConsultationsPage() {
             Nenhuma consulta encontrada
           </p>
           <p className="text-text-muted text-sm mt-1">
-            Agende uma consulta para começar
+            Grave uma sessao pelo tablet para criar consultas automaticamente
           </p>
+          <Link
+            to="/session"
+            className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
+          >
+            <Mic className="w-4 h-4" />
+            Iniciar Sessao
+          </Link>
         </div>
       )}
     </div>

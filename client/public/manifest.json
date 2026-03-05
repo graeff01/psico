@@ -1,0 +1,19 @@
+{
+  "name": "PsicoIA Manager",
+  "short_name": "PsicoIA",
+  "description": "Gestao de Sessoes com IA para Psicologos",
+  "start_url": "/session",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c0f1a",
+  "theme_color": "#4c6ef5",
+  "categories": ["medical", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
