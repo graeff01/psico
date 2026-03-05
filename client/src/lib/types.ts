@@ -118,3 +118,42 @@ export const PATIENT_STATUS = {
   active: "Ativo",
   inactive: "Inativo",
 } as const;
+
+export interface Payment {
+  id: number;
+  consultationId: number | null;
+  patientId: number;
+  patientName?: string;
+  amount: number;
+  status: string;
+  method: string | null;
+  notes: string | null;
+  receiptNumber: string | null;
+  paidAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export const PAYMENT_STATUS = {
+  pending: "Pendente",
+  paid: "Pago",
+  cancelled: "Cancelado",
+  refunded: "Reembolsado",
+} as const;
+
+export const PAYMENT_METHODS = {
+  pix: "PIX",
+  cash: "Dinheiro",
+  credit_card: "Cartao Credito",
+  debit_card: "Cartao Debito",
+  transfer: "Transferencia",
+  other: "Outro",
+} as const;
+
+export const RISK_LEVELS = {
+  none: { label: "Sem risco", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" },
+  low: { label: "Baixo", color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-200" },
+  medium: { label: "Moderado", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" },
+  high: { label: "Alto", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200" },
+  critical: { label: "Critico", color: "text-red-700", bg: "bg-red-50", border: "border-red-200" },
+} as const;

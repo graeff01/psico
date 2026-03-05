@@ -16,17 +16,32 @@ import {
   User,
   Loader2,
   Plus,
+  TrendingUp,
+  Download,
 } from "lucide-react";
 import { useState } from "react";
 import { CONSULTATION_STATUS } from "../lib/types";
+import { AnamnesisForm } from "../components/AnamnesisForm";
+import { exportPatientPDF } from "../lib/pdf-export";
 
 export function PatientDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  const patientId = Number(id);
   const { data: patient, isLoading } = trpc.patients.getById.useQuery(
-    { id: Number(id) },
+    { id: patientId },
+    { enabled: !!id }
+  );
+
+  const { data: timeline } = trpc.consultations.getPatientTimeline.useQuery(
+    { patientId },
+    { enabled: !!id }
+  );
+
+  const { data: anamnesis } = trpc.patients.getAnamnesis.useQuery(
+    { patientId },
     { enabled: !!id }
   );
 
@@ -79,13 +94,33 @@ export function PatientDetailPage() {
             </div>
           </div>
         </div>
-        <button
-          onClick={() => setShowDeleteConfirm(true)}
-          className="p-2 rounded-lg hover:bg-red-50 text-text-muted hover:text-red-600 transition-colors"
-          title="Excluir paciente"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/patients/${id}/timeline`}
+            className="px-3 py-2 rounded-lg bg-primary-50 text-primary-700 text-xs font-medium hover:bg-primary-100 transition-colors flex items-center gap-1.5"
+          >
+            <TrendingUp className="w-3.5 h-3.5" />
+            Evolucao
+          </Link>
+          <button
+            onClick={() => {
+              if (patient) {
+                exportPatientPDF(patient, timeline ?? [], anamnesis ?? null);
+              }
+            }}
+            className="px-3 py-2 rounded-lg bg-sage-50 text-sage-700 text-xs font-medium hover:bg-sage-100 transition-colors flex items-center gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Exportar PDF
+          </button>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="p-2 rounded-lg hover:bg-red-50 text-text-muted hover:text-red-600 transition-colors"
+            title="Excluir paciente"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Delete Confirmation */}
@@ -268,6 +303,9 @@ export function PatientDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Anamnesis */}
+      <AnamnesisForm patientId={patientId} />
 
       {/* Consultations */}
       <div className="bg-white rounded-xl border border-border-light p-6">

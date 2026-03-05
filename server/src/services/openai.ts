@@ -48,7 +48,13 @@ export async function transcribeAudio(
 export async function generateClinicalSummary(
   transcriptionText: string,
   tags: string[]
-): Promise<{ summary: string; insights: string[]; suggestedTags: string[] }> {
+): Promise<{
+  summary: string;
+  insights: string[];
+  suggestedTags: string[];
+  riskLevel: string;
+  riskIndicators: string[];
+}> {
   const openai = getOpenAI();
 
   const response = await openai.chat.completions.create({
@@ -63,15 +69,26 @@ REGRAS IMPORTANTES:
 - NUNCA inclua nomes de pacientes, CPF, datas de nascimento ou dados identificáveis
 - Foque em padrões comportamentais, emocionais e cognitivos
 - Use linguagem técnica psicológica quando apropriado
-- Identifique possíveis riscos (autolesão, ideação suicida) e destaque-os
 - Sugira tags clínicas relevantes
 - Seja conciso mas completo
+
+AVALIAÇÃO DE RISCO (OBRIGATÓRIA):
+Avalie o nível de risco do paciente baseado na transcrição:
+- "none": Sem indicadores de risco
+- "low": Sinais leves de sofrimento, sem risco imediato
+- "medium": Indicadores moderados (isolamento, desesperança, mudanças significativas)
+- "high": Indicadores graves (ideação suicida passiva, autolesão, abuso de substâncias severo)
+- "critical": Risco iminente (ideação suicida ativa, plano concreto, risco a terceiros)
+
+Identifique indicadores específicos de risco encontrados na transcrição.
 
 Responda em formato JSON:
 {
   "summary": "Resumo clínico da consulta...",
   "insights": ["Insight 1", "Insight 2", ...],
-  "suggestedTags": ["tag1", "tag2", ...]
+  "suggestedTags": ["tag1", "tag2", ...],
+  "riskLevel": "none|low|medium|high|critical",
+  "riskIndicators": ["Indicador 1", "Indicador 2", ...]
 }`,
       },
       {
@@ -82,7 +99,7 @@ ${transcriptionText}
 
 Tags existentes do paciente: ${tags.join(", ") || "Nenhuma"}
 
-Gere o resumo clínico, insights e tags sugeridas.`,
+Gere o resumo clínico, insights, tags sugeridas e avaliação de risco.`,
       },
     ],
     temperature: 0.3,
@@ -99,6 +116,8 @@ Gere o resumo clínico, insights e tags sugeridas.`,
     summary: parsed.summary || "",
     insights: parsed.insights || [],
     suggestedTags: parsed.suggestedTags || [],
+    riskLevel: parsed.riskLevel || "none",
+    riskIndicators: parsed.riskIndicators || [],
   };
 }
 

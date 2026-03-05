@@ -13,14 +13,19 @@ import {
   X,
   Shield,
   Brain,
+  CalendarDays,
+  DollarSign,
+  FileText,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Pacientes", href: "/patients", icon: Users },
   { name: "Consultas", href: "/consultations", icon: Calendar },
-  { name: "Sessão", href: "/session", icon: Mic },
-  { name: "Configurações", href: "/settings", icon: Settings },
+  { name: "Agenda", href: "/calendar", icon: CalendarDays },
+  { name: "Financeiro", href: "/payments", icon: DollarSign },
+  { name: "Documentos", href: "/documents", icon: FileText },
+  { name: "Configuracoes", href: "/settings", icon: Settings },
 ];
 
 export function Layout() {

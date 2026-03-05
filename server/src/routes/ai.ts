@@ -167,10 +167,12 @@ export const aiRouter = router({
               summary: analysis.summary,
               insights: analysis.insights,
               suggestedTags: analysis.suggestedTags,
+              riskIndicators: analysis.riskIndicators,
             })
           ),
           tags: analysis.suggestedTags,
           model: "gpt-4o",
+          riskLevel: analysis.riskLevel,
         })
         .returning();
 

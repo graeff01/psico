@@ -106,6 +106,9 @@ export const patients = pgTable(
     cpfHash: varchar("cpf_hash", { length: 64 }),
     emailHash: varchar("email_hash", { length: 64 }),
 
+    // Anamnese estruturada (JSON criptografado)
+    anamnesis: text("anamnesis"), // encrypted JSON
+
     // Metadados (não sensíveis)
     status: varchar("status", { length: 20 }).default("active").notNull(),
     tags: jsonb("tags").$type<string[]>().default([]),
@@ -224,6 +227,8 @@ export const aiAnalyses = pgTable(
     tags: jsonb("tags").$type<string[]>().default([]),
     model: varchar("model", { length: 50 }).default("gpt-4o"),
     tokensUsed: integer("tokens_used"),
+    riskLevel: varchar("risk_level", { length: 20 }).default("none"),
+    // none | low | medium | high | critical
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
@@ -329,6 +334,43 @@ export const backups = pgTable("backups", {
   expiresAt: timestamp("expires_at"),
 });
 
+// ─── Pagamentos ───────────────────────────────────────────────────
+
+export const payments = pgTable(
+  "payments",
+  {
+    id: serial("id").primaryKey(),
+    consultationId: integer("consultation_id").references(
+      () => consultations.id,
+      { onDelete: "set null" }
+    ),
+    patientId: integer("patient_id")
+      .notNull()
+      .references(() => patients.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    amount: integer("amount").notNull(), // centavos (R$ 150,00 = 15000)
+    status: varchar("status", { length: 20 }).default("pending").notNull(),
+    // pending | paid | cancelled | refunded
+    method: varchar("method", { length: 30 }),
+    // pix | cash | credit_card | debit_card | transfer | other
+    notes: text("notes"), // encrypted
+    receiptNumber: varchar("receipt_number", { length: 50 }),
+    paidAt: timestamp("paid_at"),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("payments_patient_id_idx").on(table.patientId),
+    index("payments_user_id_idx").on(table.userId),
+    index("payments_status_idx").on(table.status),
+    index("payments_paid_at_idx").on(table.paidAt),
+  ]
+);
+
 // ─── Relations ─────────────────────────────────────────────────────────
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -338,6 +380,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   auditLogs: many(auditLogs),
   aiChatMessages: many(aiChatMessages),
   backups: many(backups),
+  payments: many(payments),
 }));
 
 export const patientsRelations = relations(patients, ({ one, many }) => ({
@@ -345,6 +388,7 @@ export const patientsRelations = relations(patients, ({ one, many }) => ({
   consultations: many(consultations),
   lgpdConsents: many(lgpdConsents),
   aiChatMessages: many(aiChatMessages),
+  payments: many(payments),
 }));
 
 export const consultationsRelations = relations(
@@ -361,6 +405,7 @@ export const consultationsRelations = relations(
     audioRecordings: many(audioRecordings),
     transcriptions: many(transcriptions),
     aiAnalyses: many(aiAnalyses),
+    payments: many(payments),
   })
 );
 
@@ -432,6 +477,21 @@ export const lgpdConsentsRelations = relations(lgpdConsents, ({ one }) => ({
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, {
     fields: [sessions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  consultation: one(consultations, {
+    fields: [payments.consultationId],
+    references: [consultations.id],
+  }),
+  patient: one(patients, {
+    fields: [payments.patientId],
+    references: [patients.id],
+  }),
+  user: one(users, {
+    fields: [payments.userId],
     references: [users.id],
   }),
 }));

@@ -12,6 +12,8 @@ import {
   Mic,
   Shield,
 } from "lucide-react";
+import { RiskAlertsWidget } from "../components/RiskAlertsWidget";
+import { FinancialWidget } from "../components/FinancialWidget";
 import {
   BarChart,
   Bar,
@@ -176,6 +178,12 @@ export function DashboardPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Risk Alerts + Financial */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RiskAlertsWidget />
+        <FinancialWidget />
       </div>
 
       {/* Quick Actions */}

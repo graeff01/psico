@@ -259,6 +259,114 @@ export const consultationsRouter = router({
       return { success: true };
     }),
 
+  // ─── Timeline de evolução do paciente ───────────────────────────────
+  getPatientTimeline: protectedProcedure
+    .input(z.object({ patientId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+
+      const [patient] = await db
+        .select()
+        .from(patients)
+        .where(
+          and(eq(patients.id, input.patientId), eq(patients.userId, userId))
+        );
+      if (!patient) throw new Error("Paciente não encontrado");
+
+      const patientConsultations = await db
+        .select()
+        .from(consultations)
+        .where(
+          and(
+            eq(consultations.patientId, input.patientId),
+            eq(consultations.userId, userId)
+          )
+        )
+        .orderBy(desc(consultations.date));
+
+      const timeline = await Promise.all(
+        patientConsultations.map(async (consult) => {
+          const analyses = await db
+            .select()
+            .from(aiAnalyses)
+            .where(eq(aiAnalyses.consultationId, consult.id))
+            .orderBy(desc(aiAnalyses.createdAt))
+            .limit(1);
+
+          let parsedAnalysis: {
+            summary?: string;
+            insights?: string[];
+            suggestedTags?: string[];
+            riskIndicators?: string[];
+          } | null = null;
+
+          if (analyses.length > 0) {
+            try {
+              parsedAnalysis = JSON.parse(decrypt(analyses[0].content));
+            } catch {
+              parsedAnalysis = null;
+            }
+          }
+
+          return {
+            id: consult.id,
+            date: consult.date,
+            duration: consult.duration,
+            status: consult.status,
+            tags: consult.tags as string[],
+            notes: consult.notes ? decrypt(consult.notes) : null,
+            riskLevel: analyses[0]?.riskLevel ?? "none",
+            analysis: parsedAnalysis,
+          };
+        })
+      );
+
+      return timeline;
+    }),
+
+  // ─── Alertas de risco ──────────────────────────────────────────────
+  getRiskAlerts: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.user.id;
+
+    const riskAnalyses = await db
+      .select({
+        analysis: aiAnalyses,
+        consultationDate: consultations.date,
+        patientId: consultations.patientId,
+        patientName: patients.name,
+      })
+      .from(aiAnalyses)
+      .innerJoin(consultations, eq(aiAnalyses.consultationId, consultations.id))
+      .innerJoin(patients, eq(consultations.patientId, patients.id))
+      .where(
+        and(
+          eq(aiAnalyses.userId, userId),
+          sql`${aiAnalyses.riskLevel} IN ('medium', 'high', 'critical')`
+        )
+      )
+      .orderBy(desc(aiAnalyses.createdAt))
+      .limit(20);
+
+    return riskAnalyses.map((r) => {
+      let parsed: { summary?: string; riskIndicators?: string[] } = {};
+      try {
+        parsed = JSON.parse(decrypt(r.analysis.content));
+      } catch {}
+
+      return {
+        id: r.analysis.id,
+        patientId: r.patientId,
+        patientName: decrypt(r.patientName),
+        consultationId: r.analysis.consultationId,
+        consultationDate: r.consultationDate,
+        riskLevel: r.analysis.riskLevel,
+        summary: parsed.summary ?? "",
+        riskIndicators: parsed.riskIndicators ?? [],
+        createdAt: r.analysis.createdAt,
+      };
+    });
+  }),
+
   // Estatísticas para dashboard
   getStats: protectedProcedure
     .input(

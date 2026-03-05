@@ -310,6 +310,75 @@ export const patientsRouter = router({
       return { success: true };
     }),
 
+  // ─── Anamnese Estruturada ────────────────────────────────────────────
+  saveAnamnesis: protectedProcedure
+    .input(
+      z.object({
+        patientId: z.number(),
+        data: z.object({
+          queixaPrincipal: z.string().optional(),
+          inicioSintomas: z.string().optional(),
+          tratamentosAnteriores: z.string().optional(),
+          historicoFamiliar: z.string().optional(),
+          historicoSocial: z.string().optional(),
+          fatoresRisco: z.string().optional(),
+          medicamentos: z.string().optional(),
+          alergias: z.string().optional(),
+          usoSubstancias: z.string().optional(),
+          qualidadeSono: z.string().optional(),
+          objetivosTerapia: z.string().optional(),
+          observacoes: z.string().optional(),
+        }),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+
+      const [existing] = await db
+        .select()
+        .from(patients)
+        .where(and(eq(patients.id, input.patientId), eq(patients.userId, userId)));
+      if (!existing) throw new Error("Paciente não encontrado");
+
+      await db
+        .update(patients)
+        .set({
+          anamnesis: encrypt(JSON.stringify(input.data)),
+          updatedAt: new Date(),
+        })
+        .where(eq(patients.id, input.patientId));
+
+      await logAudit({
+        userId,
+        action: "SAVE_ANAMNESIS",
+        resourceType: "patient",
+        resourceId: input.patientId,
+        ipAddress: getClientIP(ctx.req),
+      });
+
+      return { success: true };
+    }),
+
+  getAnamnesis: protectedProcedure
+    .input(z.object({ patientId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+
+      const [patient] = await db
+        .select()
+        .from(patients)
+        .where(and(eq(patients.id, input.patientId), eq(patients.userId, userId)));
+      if (!patient) throw new Error("Paciente não encontrado");
+
+      if (!patient.anamnesis) return null;
+
+      try {
+        return JSON.parse(decrypt(patient.anamnesis));
+      } catch {
+        return null;
+      }
+    }),
+
   getStats: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.user.id;
 
