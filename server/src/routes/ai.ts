@@ -24,13 +24,13 @@ import { nanoid } from "nanoid";
 export const aiRouter = router({
   // ─── Transcrever áudio de uma consulta ────────────────────────────────
   transcribe: protectedProcedure
-    .input(z.object({ audioRecordingId: z.number() }))
+    .input(z.object({
+      audioRecordingId: z.number(),
+      audioData: z.string().optional(), // base64 fallback when S3 is not configured
+    }))
     .mutation(async ({ ctx, input }) => {
       if (!isOpenAIConfigured()) {
         throw new Error("IA nao configurada. Adicione a OPENAI_API_KEY nas variaveis de ambiente do Railway para usar transcricao e analise.");
-      }
-      if (!isStorageConfigured()) {
-        throw new Error("Storage S3 nao configurado. Adicione as variaveis S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY e S3_SECRET_KEY no Railway para usar transcricao.");
       }
 
       const userId = ctx.user.id;
@@ -46,7 +46,7 @@ export const aiRouter = router({
           )
         );
 
-      if (!audio) throw new Error("Gravação não encontrada");
+      if (!audio) throw new Error("Gravacao nao encontrada");
 
       // Atualizar status
       await db
@@ -55,9 +55,18 @@ export const aiRouter = router({
         .where(eq(audioRecordings.id, audio.id));
 
       try {
-        // Baixar áudio do S3
-        const s3Key = decrypt(audio.s3Key);
-        const audioBuffer = await getAudioBuffer(s3Key);
+        let audioBuffer: Buffer;
+
+        if (isStorageConfigured()) {
+          // Download from S3
+          const s3Key = decrypt(audio.s3Key);
+          audioBuffer = await getAudioBuffer(s3Key);
+        } else if (input.audioData) {
+          // Use inline base64 audio data
+          audioBuffer = Buffer.from(input.audioData, "base64");
+        } else {
+          throw new Error("Audio nao disponivel: S3 nao configurado e nenhum dado inline enviado.");
+        }
 
         // Transcrever com Whisper
         const startTime = Date.now();
@@ -93,7 +102,7 @@ export const aiRouter = router({
           resourceType: "audio_recording",
           resourceId: audio.id,
           ipAddress: getClientIP(ctx.req),
-          details: `Transcrição concluída em ${processingTime}ms`,
+          details: `Transcricao concluida em ${processingTime}ms`,
         });
 
         return {

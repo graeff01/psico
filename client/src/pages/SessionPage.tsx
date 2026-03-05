@@ -40,6 +40,11 @@ interface AnalysisResult {
   suggestedTags: string[];
 }
 
+interface PipelineWarnings {
+  transcribeSkipped?: string;
+  analyzeSkipped?: string;
+}
+
 export function SessionPage() {
   const navigate = useNavigate();
 
@@ -56,6 +61,7 @@ export function SessionPage() {
     null
   );
   const [error, setError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<PipelineWarnings>({});
   const [search, setSearch] = useState("");
 
   // Audio recorder
@@ -73,6 +79,7 @@ export function SessionPage() {
 
   // tRPC mutations
   const createConsultation = trpc.consultations.create.useMutation();
+  const updateConsultation = trpc.consultations.update.useMutation();
   const uploadAudio = trpc.audio.upload.useMutation();
   const transcribe = trpc.ai.transcribe.useMutation();
   const analyze = trpc.ai.analyze.useMutation();
@@ -163,8 +170,9 @@ export function SessionPage() {
     setConsultationId(null);
   }, [isRecording, resetRecording]);
 
-  // Processing pipeline
+  // Processing pipeline with graceful degradation
   const pipelineRunRef = useRef(false);
+  const audioBase64Ref = useRef<string | null>(null);
   useEffect(() => {
     if (
       phase !== "processing" ||
@@ -176,8 +184,10 @@ export function SessionPage() {
     pipelineRunRef.current = true;
 
     const runPipeline = async () => {
+      const pipelineWarnings: PipelineWarnings = {};
+
       try {
-        // Step 1: Upload
+        // Step 1: Upload (always runs)
         setProcessingStep("uploading");
         const base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -186,6 +196,7 @@ export function SessionPage() {
           reader.onerror = () => reject(new Error("Erro ao ler audio"));
           reader.readAsDataURL(audioBlob);
         });
+        audioBase64Ref.current = base64;
 
         const uploadResult = await uploadAudio.mutateAsync({
           consultationId,
@@ -195,25 +206,68 @@ export function SessionPage() {
           duration,
         });
 
-        // Step 2: Transcribe
+        // Step 2: Transcribe (optional — skip if OpenAI not configured)
         setProcessingStep("transcribing");
-        await transcribe.mutateAsync({
-          audioRecordingId: uploadResult.id,
-        });
+        let transcribeOk = false;
+        try {
+          await transcribe.mutateAsync({
+            audioRecordingId: uploadResult.id,
+            audioData: base64, // send inline audio as fallback for no-S3
+          });
+          transcribeOk = true;
+        } catch (err: any) {
+          const msg = err.message || "";
+          if (msg.includes("IA nao configurada") || msg.includes("OPENAI_API_KEY") || msg.includes("429") || msg.includes("quota") || msg.includes("insufficient_quota")) {
+            pipelineWarnings.transcribeSkipped = "Transcricao indisponivel: IA nao configurada ou sem creditos na OpenAI.";
+          } else if (msg.includes("S3") || msg.includes("Storage")) {
+            pipelineWarnings.transcribeSkipped = "Transcricao indisponivel: storage nao configurado.";
+          } else {
+            pipelineWarnings.transcribeSkipped = `Transcricao falhou: ${msg}`;
+          }
+        }
 
-        // Step 3: Analyze
+        // Step 3: Analyze (optional — only if transcription exists)
         setProcessingStep("analyzing");
-        const result = await analyze.mutateAsync({
-          consultationId,
-        });
+        if (transcribeOk) {
+          try {
+            const result = await analyze.mutateAsync({
+              consultationId,
+            });
+            setAnalysisResult(result);
+          } catch (err: any) {
+            const msg = err.message || "";
+            pipelineWarnings.analyzeSkipped = msg.includes("IA nao configurada") || msg.includes("429") || msg.includes("quota")
+              ? "Analise indisponivel: IA sem creditos ou nao configurada."
+              : `Analise falhou: ${msg}`;
+          }
+        } else {
+          pipelineWarnings.analyzeSkipped = "Analise pulada: sem transcricao disponivel.";
+        }
 
-        setAnalysisResult(result);
+        // Mark consultation as completed
+        try {
+          await updateConsultation.mutateAsync({
+            id: consultationId,
+            data: { status: "completed", duration },
+          });
+        } catch {
+          // Non-critical — consultation stays in_progress
+        }
+
+        setWarnings(pipelineWarnings);
         setProcessingStep("done");
         setPhase("complete");
-        toast.success("Sessao processada com sucesso!");
+
+        const hasWarnings = pipelineWarnings.transcribeSkipped || pipelineWarnings.analyzeSkipped;
+        if (hasWarnings) {
+          toast.success("Sessao salva! Transcricao/analise IA indisponiveis.");
+        } else {
+          toast.success("Sessao processada com sucesso!");
+        }
       } catch (err: any) {
-        setError(err.message || "Erro no processamento");
-        toast.error("Erro no processamento. Tente novamente.");
+        // Only reaches here if upload itself fails
+        setError(err.message || "Erro ao enviar audio");
+        toast.error("Erro ao enviar audio. Tente novamente.");
       }
     };
 
@@ -224,6 +278,7 @@ export function SessionPage() {
     consultationId,
     duration,
     uploadAudio,
+    updateConsultation,
     transcribe,
     analyze,
   ]);
@@ -242,8 +297,10 @@ export function SessionPage() {
     setConsultationId(null);
     setAnalysisResult(null);
     setError(null);
+    setWarnings({});
     setSearch("");
     pipelineRunRef.current = false;
+    audioBase64Ref.current = null;
   }, [resetRecording]);
 
   // ═══════════════════════════════════════════════════════════════════
@@ -616,10 +673,10 @@ export function SessionPage() {
   // PHASE 3: Processing
   // ═══════════════════════════════════════════════════════════════════
   if (phase === "processing") {
-    const steps: { key: ProcessingStep; label: string; desc: string; icon: typeof Upload }[] = [
+    const steps: { key: ProcessingStep; label: string; desc: string; icon: typeof Upload; optional?: boolean }[] = [
       { key: "uploading", label: "Enviando audio", desc: "Fazendo upload do arquivo de audio", icon: Upload },
-      { key: "transcribing", label: "Transcrevendo", desc: "IA convertendo fala em texto", icon: FileText },
-      { key: "analyzing", label: "Analisando", desc: "Gerando resumo e insights clinicos", icon: Wand2 },
+      { key: "transcribing", label: "Transcrevendo", desc: "IA convertendo fala em texto", icon: FileText, optional: true },
+      { key: "analyzing", label: "Analisando", desc: "Gerando resumo e insights clinicos", icon: Wand2, optional: true },
     ];
 
     const stepOrder: ProcessingStep[] = [
@@ -798,6 +855,35 @@ export function SessionPage() {
 
       {/* Results */}
       <div className="max-w-lg mx-auto px-4 pb-10 space-y-4 -mt-2">
+        {/* Warnings */}
+        {(warnings.transcribeSkipped || warnings.analyzeSkipped) && (
+          <div className="bg-amber-50 rounded-2xl border border-amber-200/60 p-5 animate-fade-in">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+              </div>
+              <h3 className="text-sm font-bold text-amber-800">
+                Processamento parcial
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {warnings.transcribeSkipped && (
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  {warnings.transcribeSkipped}
+                </p>
+              )}
+              {warnings.analyzeSkipped && (
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  {warnings.analyzeSkipped}
+                </p>
+              )}
+            </div>
+            <p className="text-[10px] text-amber-600 mt-3">
+              O audio foi salvo. Voce pode reprocessar a sessao quando a IA estiver disponivel.
+            </p>
+          </div>
+        )}
+
         {analysisResult && (
           <>
             {/* Summary */}
