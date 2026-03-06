@@ -15,6 +15,12 @@ import {
   Tag,
   Eye,
   Calendar,
+  Quote,
+  TrendingUp,
+  Lightbulb,
+  Activity,
+  AlertTriangle,
+  Target,
 } from "lucide-react";
 import { EvolutionForm } from "../components/EvolutionForm";
 
@@ -252,6 +258,12 @@ export function ConsultationDetailPage() {
                 summary?: string;
                 insights?: string[];
                 suggestedTags?: string[];
+                riskIndicators?: string[];
+                behavioralPatterns?: string[];
+                therapeuticSuggestions?: string[];
+                patientDemeanor?: string;
+                keyQuotes?: string[];
+                progressIndicators?: string[];
               } = {};
               try {
                 parsed = JSON.parse(analysis.content);
@@ -261,6 +273,22 @@ export function ConsultationDetailPage() {
 
               return (
                 <div key={analysis.id} className="space-y-5">
+                  {/* Patient Demeanor */}
+                  {parsed.patientDemeanor && (
+                    <div className="p-3 rounded-xl bg-violet-50/50 border border-violet-100">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Activity className="w-3.5 h-3.5 text-violet-600" />
+                        <p className="text-[10px] font-semibold text-violet-700 uppercase tracking-wider">
+                          Estado do Paciente
+                        </p>
+                      </div>
+                      <p className="text-sm text-text-secondary leading-relaxed">
+                        {parsed.patientDemeanor}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Summary */}
                   {parsed.summary && (
                     <div className="p-4 rounded-xl bg-primary-50/50 border border-primary-100">
                       <div className="flex items-center gap-2 mb-2">
@@ -269,12 +297,37 @@ export function ConsultationDetailPage() {
                           Resumo Clinico
                         </p>
                       </div>
-                      <p className="text-sm text-text-secondary leading-relaxed">
+                      <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
                         {parsed.summary}
                       </p>
                     </div>
                   )}
 
+                  {/* Key Quotes */}
+                  {parsed.keyQuotes && parsed.keyQuotes.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Quote className="w-4 h-4 text-indigo-500" />
+                        <p className="text-xs font-semibold text-text-primary uppercase tracking-wider">
+                          Falas-chave do Paciente
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        {parsed.keyQuotes.map((quote, i) => (
+                          <div
+                            key={i}
+                            className="p-3 rounded-xl bg-indigo-50/40 border-l-3 border-indigo-300"
+                          >
+                            <p className="text-sm text-text-secondary italic leading-relaxed">
+                              "{quote}"
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Insights */}
                   {parsed.insights && parsed.insights.length > 0 && (
                     <div>
                       <div className="flex items-center gap-2 mb-3">
@@ -303,6 +356,108 @@ export function ConsultationDetailPage() {
                     </div>
                   )}
 
+                  {/* Behavioral Patterns */}
+                  {parsed.behavioralPatterns && parsed.behavioralPatterns.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Brain className="w-4 h-4 text-purple-500" />
+                        <p className="text-xs font-semibold text-text-primary uppercase tracking-wider">
+                          Padroes Comportamentais
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        {parsed.behavioralPatterns.map((pattern, i) => (
+                          <div
+                            key={i}
+                            className="flex items-start gap-3 p-3 rounded-xl bg-purple-50/40"
+                          >
+                            <div className="w-1.5 h-1.5 rounded-full bg-purple-400 flex-shrink-0 mt-2" />
+                            <span className="text-sm text-text-secondary leading-relaxed">
+                              {pattern}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Therapeutic Suggestions */}
+                  {parsed.therapeuticSuggestions && parsed.therapeuticSuggestions.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Lightbulb className="w-4 h-4 text-amber-500" />
+                        <p className="text-xs font-semibold text-text-primary uppercase tracking-wider">
+                          Sugestoes Terapeuticas
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        {parsed.therapeuticSuggestions.map((suggestion, i) => (
+                          <div
+                            key={i}
+                            className="flex items-start gap-3 p-3 rounded-xl bg-amber-50/50 border border-amber-100/60"
+                          >
+                            <Target className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <span className="text-sm text-text-secondary leading-relaxed">
+                              {suggestion}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Progress Indicators */}
+                  {parsed.progressIndicators && parsed.progressIndicators.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                        <p className="text-xs font-semibold text-text-primary uppercase tracking-wider">
+                          Indicadores de Progresso
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        {parsed.progressIndicators.map((indicator, i) => (
+                          <div
+                            key={i}
+                            className="flex items-start gap-3 p-3 rounded-xl bg-emerald-50/40"
+                          >
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0 mt-2" />
+                            <span className="text-sm text-text-secondary leading-relaxed">
+                              {indicator}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Risk Indicators */}
+                  {parsed.riskIndicators && parsed.riskIndicators.length > 0 && (
+                    <div className="p-4 rounded-xl bg-red-50/50 border border-red-200/60">
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertTriangle className="w-4 h-4 text-red-500" />
+                        <p className="text-xs font-semibold text-red-700 uppercase tracking-wider">
+                          Indicadores de Risco
+                        </p>
+                        {analysis.riskLevel && analysis.riskLevel !== "none" && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-red-100 text-red-700 ml-auto">
+                            {analysis.riskLevel === "low" ? "Baixo" :
+                             analysis.riskLevel === "medium" ? "Moderado" :
+                             analysis.riskLevel === "high" ? "Alto" : "Critico"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        {parsed.riskIndicators.map((indicator, i) => (
+                          <p key={i} className="text-sm text-red-700/80 leading-relaxed">
+                            • {indicator}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tags */}
                   {parsed.suggestedTags &&
                     parsed.suggestedTags.length > 0 && (
                       <div>

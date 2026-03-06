@@ -161,10 +161,38 @@ export const aiRouter = router({
 
       const tags = (consultation.tags as string[]) ?? [];
 
-      // Gerar análise com IA
-      const analysis = await generateClinicalSummary(fullText, tags);
+      // Buscar resumos de sessoes anteriores para contexto de evolucao
+      const previousAnalyses = await db
+        .select()
+        .from(aiAnalyses)
+        .where(
+          sql`${aiAnalyses.consultationId} IN (
+            SELECT id FROM consultations
+            WHERE patient_id = ${consultation.patientId}
+            AND id != ${input.consultationId}
+            ORDER BY date DESC
+            LIMIT 3
+          )`
+        );
 
-      // Salvar resumo
+      const previousSummaries = previousAnalyses
+        .map((a) => {
+          try {
+            return JSON.parse(decrypt(a.content)).summary || "";
+          } catch {
+            return "";
+          }
+        })
+        .filter(Boolean);
+
+      // Gerar analise clinica completa com IA
+      const analysis = await generateClinicalSummary(
+        fullText,
+        tags,
+        previousSummaries.length > 0 ? previousSummaries : undefined
+      );
+
+      // Salvar analise completa (criptografada)
       const [summary] = await db
         .insert(aiAnalyses)
         .values({
@@ -177,6 +205,11 @@ export const aiRouter = router({
               insights: analysis.insights,
               suggestedTags: analysis.suggestedTags,
               riskIndicators: analysis.riskIndicators,
+              behavioralPatterns: analysis.behavioralPatterns,
+              therapeuticSuggestions: analysis.therapeuticSuggestions,
+              patientDemeanor: analysis.patientDemeanor,
+              keyQuotes: analysis.keyQuotes,
+              progressIndicators: analysis.progressIndicators,
             })
           ),
           tags: analysis.suggestedTags,
@@ -198,6 +231,13 @@ export const aiRouter = router({
         summary: analysis.summary,
         insights: analysis.insights,
         suggestedTags: analysis.suggestedTags,
+        behavioralPatterns: analysis.behavioralPatterns,
+        therapeuticSuggestions: analysis.therapeuticSuggestions,
+        patientDemeanor: analysis.patientDemeanor,
+        keyQuotes: analysis.keyQuotes,
+        progressIndicators: analysis.progressIndicators,
+        riskLevel: analysis.riskLevel,
+        riskIndicators: analysis.riskIndicators,
       };
     }),
 
