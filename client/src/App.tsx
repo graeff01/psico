@@ -14,6 +14,7 @@ import { PatientTimelinePage } from "./pages/PatientTimelinePage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { PaymentsPage } from "./pages/PaymentsPage";
 import { DocumentsPage } from "./pages/DocumentsPage";
+import { ScalesPage } from "./pages/ScalesPage";
 import { AIChatFloat } from "./components/AIChatFloat";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -89,6 +90,7 @@ export default function App() {
           <Route path="consultations/:id" element={<ConsultationDetailPage />} />
           <Route path="patients/:id/timeline" element={<PatientTimelinePage />} />
           <Route path="calendar" element={<CalendarPage />} />
+          <Route path="scales" element={<ScalesPage />} />
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="documents" element={<DocumentsPage />} />
           <Route path="settings" element={<SettingsPage />} />

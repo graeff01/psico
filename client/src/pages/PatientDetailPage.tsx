@@ -22,6 +22,8 @@ import {
 import { useState } from "react";
 import { CONSULTATION_STATUS } from "../lib/types";
 import { AnamnesisForm } from "../components/AnamnesisForm";
+import { DiagnosisManager } from "../components/DiagnosisManager";
+import { TreatmentPlan } from "../components/TreatmentPlan";
 import { exportPatientPDF } from "../lib/pdf-export";
 
 export function PatientDetailPage() {
@@ -306,6 +308,12 @@ export function PatientDetailPage() {
 
       {/* Anamnesis */}
       <AnamnesisForm patientId={patientId} />
+
+      {/* Diagnósticos + Plano Terapêutico */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <DiagnosisManager patientId={patientId} />
+        <TreatmentPlan patientId={patientId} />
+      </div>
 
       {/* Consultations */}
       <div className="bg-white rounded-xl border border-border-light p-6">

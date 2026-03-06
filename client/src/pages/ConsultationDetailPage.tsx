@@ -16,6 +16,7 @@ import {
   Eye,
   Calendar,
 } from "lucide-react";
+import { EvolutionForm } from "../components/EvolutionForm";
 
 export function ConsultationDetailPage() {
   const { id } = useParams();
@@ -129,6 +130,9 @@ export function ConsultationDetailPage() {
           </button>
         )}
       </div>
+
+      {/* Prontuário de Evolução */}
+      <EvolutionForm consultationId={consultationId} />
 
       {/* Audio Recordings (read-only) */}
       {consultation.audioRecordings &&

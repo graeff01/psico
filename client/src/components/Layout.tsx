@@ -16,6 +16,7 @@ import {
   CalendarDays,
   DollarSign,
   FileText,
+  ClipboardCheck,
 } from "lucide-react";
 
 const navigation = [
@@ -23,6 +24,7 @@ const navigation = [
   { name: "Pacientes", href: "/patients", icon: Users },
   { name: "Consultas", href: "/consultations", icon: Calendar },
   { name: "Agenda", href: "/calendar", icon: CalendarDays },
+  { name: "Escalas", href: "/scales", icon: ClipboardCheck },
   { name: "Financeiro", href: "/payments", icon: DollarSign },
   { name: "Documentos", href: "/documents", icon: FileText },
   { name: "Configuracoes", href: "/settings", icon: Settings },

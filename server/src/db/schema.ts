@@ -371,6 +371,141 @@ export const payments = pgTable(
   ]
 );
 
+// ─── Prontuário de Evolução ───────────────────────────────────────────
+
+export const evolutionRecords = pgTable(
+  "evolution_records",
+  {
+    id: serial("id").primaryKey(),
+    consultationId: integer("consultation_id")
+      .notNull()
+      .references(() => consultations.id, { onDelete: "cascade" }),
+    patientId: integer("patient_id")
+      .notNull()
+      .references(() => patients.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    sessionNumber: integer("session_number"),
+    sessionObjective: text("session_objective"), // encrypted
+    techniquesUsed: text("techniques_used"), // encrypted
+    clinicalObservations: text("clinical_observations"), // encrypted
+    patientMood: varchar("patient_mood", { length: 30 }),
+    // calm | anxious | sad | angry | euphoric | apathetic | agitated | fearful | other
+    progressNotes: text("progress_notes"), // encrypted
+    nextSessionPlan: text("next_session_plan"), // encrypted
+    interventions: jsonb("interventions").$type<string[]>().default([]),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("evolution_consultation_id_idx").on(table.consultationId),
+    index("evolution_patient_id_idx").on(table.patientId),
+    index("evolution_user_id_idx").on(table.userId),
+  ]
+);
+
+// ─── Aplicação de Escalas Clínicas ───────────────────────────────────
+
+export const scaleApplications = pgTable(
+  "scale_applications",
+  {
+    id: serial("id").primaryKey(),
+    patientId: integer("patient_id")
+      .notNull()
+      .references(() => patients.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    consultationId: integer("consultation_id").references(
+      () => consultations.id,
+      { onDelete: "set null" }
+    ),
+
+    scaleType: varchar("scale_type", { length: 20 }).notNull(),
+    // phq9 | gad7 | bdi
+    responses: text("responses").notNull(), // encrypted JSON
+    totalScore: integer("total_score").notNull(),
+    severity: varchar("severity", { length: 30 }).notNull(),
+    // minimal | mild | moderate | moderately_severe | severe
+    notes: text("notes"), // encrypted
+
+    appliedAt: timestamp("applied_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("scale_patient_id_idx").on(table.patientId),
+    index("scale_type_idx").on(table.scaleType),
+    index("scale_applied_at_idx").on(table.appliedAt),
+  ]
+);
+
+// ─── Diagnósticos do Paciente ────────────────────────────────────────
+
+export const patientDiagnoses = pgTable(
+  "patient_diagnoses",
+  {
+    id: serial("id").primaryKey(),
+    patientId: integer("patient_id")
+      .notNull()
+      .references(() => patients.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    code: varchar("code", { length: 20 }).notNull(), // F41.1, F32.0, etc.
+    system: varchar("system", { length: 10 }).notNull(), // cid10 | dsm5
+    description: text("description").notNull(),
+    status: varchar("status", { length: 20 }).default("active").notNull(),
+    // active | in_remission | resolved
+    notes: text("notes"), // encrypted
+
+    diagnosedAt: timestamp("diagnosed_at").defaultNow().notNull(),
+    resolvedAt: timestamp("resolved_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("diagnosis_patient_id_idx").on(table.patientId),
+    index("diagnosis_code_idx").on(table.code),
+    index("diagnosis_status_idx").on(table.status),
+  ]
+);
+
+// ─── Plano Terapêutico / Metas ──────────────────────────────────────
+
+export const treatmentGoals = pgTable(
+  "treatment_goals",
+  {
+    id: serial("id").primaryKey(),
+    patientId: integer("patient_id")
+      .notNull()
+      .references(() => patients.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    title: text("title").notNull(), // encrypted
+    description: text("description"), // encrypted
+    status: varchar("status", { length: 20 }).default("pending").notNull(),
+    // pending | in_progress | achieved | discontinued
+    priority: varchar("priority", { length: 10 }).default("medium").notNull(),
+    // low | medium | high
+    targetDate: timestamp("target_date"),
+    achievedAt: timestamp("achieved_at"),
+    notes: text("notes"), // encrypted
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("goals_patient_id_idx").on(table.patientId),
+    index("goals_status_idx").on(table.status),
+  ]
+);
+
 // ─── Relations ─────────────────────────────────────────────────────────
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -389,6 +524,10 @@ export const patientsRelations = relations(patients, ({ one, many }) => ({
   lgpdConsents: many(lgpdConsents),
   aiChatMessages: many(aiChatMessages),
   payments: many(payments),
+  evolutionRecords: many(evolutionRecords),
+  scaleApplications: many(scaleApplications),
+  diagnoses: many(patientDiagnoses),
+  treatmentGoals: many(treatmentGoals),
 }));
 
 export const consultationsRelations = relations(
@@ -406,6 +545,8 @@ export const consultationsRelations = relations(
     transcriptions: many(transcriptions),
     aiAnalyses: many(aiAnalyses),
     payments: many(payments),
+    evolutionRecords: many(evolutionRecords),
+    scaleApplications: many(scaleApplications),
   })
 );
 
@@ -495,3 +636,67 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const evolutionRecordsRelations = relations(
+  evolutionRecords,
+  ({ one }) => ({
+    consultation: one(consultations, {
+      fields: [evolutionRecords.consultationId],
+      references: [consultations.id],
+    }),
+    patient: one(patients, {
+      fields: [evolutionRecords.patientId],
+      references: [patients.id],
+    }),
+    user: one(users, {
+      fields: [evolutionRecords.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const scaleApplicationsRelations = relations(
+  scaleApplications,
+  ({ one }) => ({
+    patient: one(patients, {
+      fields: [scaleApplications.patientId],
+      references: [patients.id],
+    }),
+    user: one(users, {
+      fields: [scaleApplications.userId],
+      references: [users.id],
+    }),
+    consultation: one(consultations, {
+      fields: [scaleApplications.consultationId],
+      references: [consultations.id],
+    }),
+  })
+);
+
+export const patientDiagnosesRelations = relations(
+  patientDiagnoses,
+  ({ one }) => ({
+    patient: one(patients, {
+      fields: [patientDiagnoses.patientId],
+      references: [patients.id],
+    }),
+    user: one(users, {
+      fields: [patientDiagnoses.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const treatmentGoalsRelations = relations(
+  treatmentGoals,
+  ({ one }) => ({
+    patient: one(patients, {
+      fields: [treatmentGoals.patientId],
+      references: [patients.id],
+    }),
+    user: one(users, {
+      fields: [treatmentGoals.userId],
+      references: [users.id],
+    }),
+  })
+);
